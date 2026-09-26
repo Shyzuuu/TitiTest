@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0f1115">
+<title>TitiSnake</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --grid: #1e222b;
+    --fg: #e8eaf0;
+    --muted: #8a90a0;
+    --snake: #4ade80;
+    --head: #86efac;
+    --food: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* Bloque le pull-to-refresh et le scroll pendant les swipes */
+    overscroll-behavior: none;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  main {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+  }
+  header {
+    width: min(92vw, 480px);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  h1 { font-size: 1.25rem; margin: 0; letter-spacing: .02em; }
+  .scores { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .95rem; }
+  .scores b { color: var(--fg); }
+  .board {
+    position: relative;
+    width: min(92vw, 480px, 70vh);
+    aspect-ratio: 1;
+    background: var(--panel);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(15, 17, 21, .78);
+    text-align: center;
+    padding: 16px;
+    cursor: pointer;
+  }
+  .overlay[hidden] { display: none; }
+  .overlay strong { font-size: 1.4rem; }
+  .overlay span { color: var(--muted); font-size: .95rem; }
+  .pad {
+    display: grid;
+    grid-template-columns: repeat(3, 64px);
+    grid-template-rows: repeat(2, 56px);
+    gap: 8px;
+  }
+  .pad button {
+    border: 0;
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--fg);
+    font-size: 1.4rem;
+    touch-action: manipulation;
+  }
+  .pad button:active { background: var(--grid); }
+  .pad [data-dir="up"] { grid-column: 2; grid-row: 1; }
+  .pad [data-dir="left"] { grid-column: 1; grid-row: 2; }
+  .pad [data-dir="down"] { grid-column: 2; grid-row: 2; }
+  .pad [data-dir="right"] { grid-column: 3; grid-row: 2; }
+  footer { color: var(--muted); font-size: .8rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>TitiSnake</h1>
+    <div class="scores">Score <b id="score">0</b> · Record <b id="best">0</b></div>
+  </header>
+
+  <div class="board">
+    <canvas id="game" aria-label="Plateau de jeu"></canvas>
+    <div class="overlay" id="overlay">
+      <strong id="overlay-title">TitiSnake</strong>
+      <span id="overlay-sub">Touche pour jouer · swipe ou flèches pour diriger</span>
+    </div>
+  </div>
+
+  <div class="pad" aria-label="Contrôles">
+    <button data-dir="up" aria-label="Haut">▲</button>
+    <button data-dir="left" aria-label="Gauche">◀</button>
+    <button data-dir="down" aria-label="Bas">▼</button>
+    <button data-dir="right" aria-label="Droite">▶</button>
+  </div>
+
+  <footer>Espace / tap = pause</footer>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const GRID = 20;
+  const BASE_TICK_MS = 140;
+  const MIN_TICK_MS = 60;
+  const SPEEDUP_PER_FOOD = 3;
+  const SWIPE_THRESHOLD_PX = 24;
+  const BEST_KEY = 'titisnake.best';
+
+  const DIRS = Object.freeze({
+    up:    { x: 0,  y: -1 },
+    down:  { x: 0,  y: 1 },
+    left:  { x: -1, y: 0 },
+    right: { x: 1,  y: 0 },
+  });
+  const KEYMAP = Object.freeze({
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    w: 'up', s: 'down', a: 'left', d: 'right',
+    z: 'up', q: 'left', // AZERTY
+  });
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlay-title');
+  const overlaySub = document.getElementById('overlay-sub');
+
+  const css = getComputedStyle(document.documentElement);
+  const COLORS = {
+    grid: css.getPropertyValue('--grid').trim(),
+    snake: css.getPropertyValue('--snake').trim(),
+    head: css.getPropertyValue('--head').trim(),
+    food: css.getPropertyValue('--food').trim(),
+  };
+
+  // localStorage peut lever en navigation privée / preview : jamais bloquant.
+  const storage = {
+    get(key) {
+      try { return Number(localStorage.getItem(key)) || 0; } catch { return 0; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, String(value)); } catch { /* ignoré */ }
+    },
+  };
+
+  const state = {
+    snake: [],
+    // Set des cellules occupées : collision en O(1) au lieu de parcourir le serpent.
+    occupied: new Set(),
+    dir: DIRS.right,
+    // File d'inputs : deux swipes rapides dans le même tick ne doivent pas se perdre
+    // ni permettre un demi-tour sur soi-même.
+    queue: [],
+    food: null,
+    score: 0,
+    best: storage.get(BEST_KEY),
+    status: 'idle', // idle | running | paused | over
+    tickMs: BASE_TICK_MS,
+    lastTick: 0,
+    rafId: 0,
+  };
+
+  const key = (x, y) => y * GRID + x;
+
+  function resize() {
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+    const size = canvas.clientWidth;
+    if (!size) return;
+    canvas.width = Math.round(size * dpr);
+    canvas.height = Math.round(size * dpr);
+    ctx.setTransform(canvas.width / GRID, 0, 0, canvas.height / GRID, 0, 0);
+    draw();
+  }
+
+  function spawnFood() {
+    const free = GRID * GRID - state.occupied.size;
+    if (free <= 0) return null;
+    // Tirage uniforme parmi les cases libres sans boucle de rejet non bornée.
+    let n = Math.floor(Math.random() * free);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (state.occupied.has(i)) continue;
+      if (n-- === 0) return { x: i % GRID, y: Math.floor(i / GRID) };
+    }
+    return null;
+  }
+
+  function reset() {
+    const mid = Math.floor(GRID / 2);
+    state.snake = [{ x: mid, y: mid }, { x: mid - 1, y: mid }, { x: mid - 2, y: mid }];
+    state.occupied = new Set(state.snake.map(p => key(p.x, p.y)));
+    state.dir = DIRS.right;
+    state.queue = [];
+    state.score = 0;
+    state.tickMs = BASE_TICK_MS;
+    state.food = spawnFood();
+    scoreEl.textContent = '0';
+    bestEl.textContent = String(state.best);
+  }
+
+  function enqueue(name) {
+    const next = DIRS[name];
+    if (!next) return;
+    if (state.status === 'idle' || state.status === 'over') start();
+    else if (state.status === 'paused') resume();
+    const last = state.queue.length ? state.queue[state.queue.length - 1] : state.dir;
+    // Refuse le demi-tour et les doublons.
+    if (next.x === -last.x && next.y === -last.y) return;
+    if (next === last) return;
+    if (state.queue.length < 3) state.queue.push(next);
+  }
+
+  function step() {
+    if (state.queue.length) state.dir = state.queue.shift();
+    const head = state.snake[0];
+    const nx = head.x + state.dir.x;
+    const ny = head.y + state.dir.y;
+
+    if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) return gameOver();
+
+    const eating = state.food && nx === state.food.x && ny === state.food.y;
+    // La queue libère sa case ce tick-ci si on ne mange pas : on peut la suivre de près.
+    if (!eating) {
+      const tail = state.snake.pop();
+      state.occupied.delete(key(tail.x, tail.y));
+    }
+    const k = key(nx, ny);
+    if (state.occupied.has(k)) return gameOver();
+
+    state.snake.unshift({ x: nx, y: ny });
+    state.occupied.add(k);
+
+    if (eating) {
+      state.score += 1;
+      scoreEl.textContent = String(state.score);
+      state.tickMs = Math.max(MIN_TICK_MS, state.tickMs - SPEEDUP_PER_FOOD);
+      if (navigator.vibrate) navigator.vibrate(15);
+      state.food = spawnFood();
+      if (!state.food) return gameOver(true);
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, GRID, GRID);
+
+    ctx.fillStyle = COLORS.grid;
+    for (let y = 0; y < GRID; y++) {
+      for (let x = (y & 1); x < GRID; x += 2) ctx.fillRect(x, y, 1, 1);
+    }
+
+    if (state.food) {
+      ctx.fillStyle = COLORS.food;
+      ctx.beginPath();
+      ctx.arc(state.food.x + .5, state.food.y + .5, .38, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const inset = .08;
+    for (let i = state.snake.length - 1; i >= 0; i--) {
+      const p = state.snake[i];
+      ctx.fillStyle = i === 0 ? COLORS.head : COLORS.snake;
+      ctx.fillRect(p.x + inset, p.y + inset, 1 - inset * 2, 1 - inset * 2);
+    }
+  }
+
+  function loop(t) {
+    state.rafId = requestAnimationFrame(loop);
+    if (state.status !== 'running') return;
+    // Rattrapage borné : évite une rafale de ticks au retour d'un onglet en arrière-plan.
+    if (t - state.lastTick > state.tickMs * 5) state.lastTick = t - state.tickMs;
+    let moved = false;
+    while (t - state.lastTick >= state.tickMs && state.status === 'running') {
+      state.lastTick += state.tickMs;
+      step();
+      moved = true;
+    }
+    if (moved) draw();
+  }
+
+  function showOverlay(title, sub) {
+    overlayTitle.textContent = title;
+    overlaySub.textContent = sub;
+    overlay.hidden = false;
+  }
+
+  function start() {
+    reset();
+    state.status = 'running';
+    state.lastTick = performance.now();
+    overlay.hidden = true;
+    draw();
+  }
+
+  function pause() {
+    if (state.status !== 'running') return;
+    state.status = 'paused';
+    showOverlay('Pause', 'Touche pour reprendre');
+  }
+
+  function resume() {
+    if (state.status !== 'paused') return;
+    state.status = 'running';
+    state.lastTick = performance.now();
+    overlay.hidden = true;
+  }
+
+  function gameOver(won = false) {
+    state.status = 'over';
+    if (state.score > state.best) {
+      state.best = state.score;
+      storage.set(BEST_KEY, state.best);
+      bestEl.textContent = String(state.best);
+    }
+    if (navigator.vibrate) navigator.vibrate([40, 40, 80]);
+    draw();
+    showOverlay(won ? 'Grille remplie 🏆' : 'Perdu', `Score ${state.score} · touche pour rejouer`);
+  }
+
+  function toggle() {
+    if (state.status === 'running') pause();
+    else if (state.status === 'paused') resume();
+    else start();
+  }
+
+  // --- Entrées ---
+  window.addEventListener('keydown', e => {
+    const dir = KEYMAP[e.key] || KEYMAP[e.key.toLowerCase()];
+    if (dir) { e.preventDefault(); enqueue(dir); return; }
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); }
+  });
+
+  let touchStart = null;
+  const board = canvas.parentElement;
+  board.addEventListener('pointerdown', e => {
+    touchStart = { x: e.clientX, y: e.clientY };
+  });
+  board.addEventListener('pointerup', e => {
+    if (!touchStart) return;
+    const dx = e.clientX - touchStart.x;
+    const dy = e.clientY - touchStart.y;
+    touchStart = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD_PX) { toggle(); return; }
+    enqueue(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  });
+  board.addEventListener('pointercancel', () => { touchStart = null; });
+
+  document.querySelectorAll('.pad button').forEach(btn => {
+    btn.addEventListener('pointerdown', e => { e.preventDefault(); enqueue(btn.dataset.dir); });
+  });
+
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  window.addEventListener('resize', resize);
+
+  reset();
+  resize();
+  state.rafId = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
