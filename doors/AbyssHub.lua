@@ -18,6 +18,21 @@ if genv.AbyssHub and type(genv.AbyssHub.Unload) == "function" then
     pcall(genv.AbyssHub.Unload)
 end
 
+-- Notification native Roblox : visible même si notre propre UI ne peut pas se créer
+local function sysNotify(title, text, duration)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = duration or 5,
+        })
+    end)
+end
+
+sysNotify("ABYSS HUB", "Chargement...", 3)
+
+local function Main()
+
 --==================================================================--
 -- SERVICES
 --==================================================================--
@@ -121,19 +136,26 @@ end
 --==================================================================--
 -- CONTENEUR UI (gethui > CoreGui > PlayerGui selon ce que Delta autorise)
 --==================================================================--
+local function canParentTo(container)
+    if typeof(container) ~= "Instance" or not container:IsDescendantOf(game) then
+        return false
+    end
+    return (pcall(function()
+        local probe = Instance.new("ScreenGui")
+        probe.Parent = container
+        probe:Destroy()
+    end))
+end
+
 local function resolveGuiParent()
+    -- Certains gethui() mobiles renvoient une instance hors DataModel : l'UI y existe mais n'est jamais rendue
     if typeof(gethui) == "function" then
         local ok, h = pcall(gethui)
-        if ok and typeof(h) == "Instance" then
+        if ok and canParentTo(h) then
             return h
         end
     end
-    local ok = pcall(function()
-        local probe = Instance.new("Folder")
-        probe.Parent = CoreGui
-        probe:Destroy()
-    end)
-    if ok then
+    if canParentTo(CoreGui) then
         return CoreGui
     end
     return LocalPlayer:WaitForChild("PlayerGui")
@@ -181,8 +203,14 @@ local ScreenGui = new("ScreenGui", {
     DisplayOrder = 9999,
 }, GuiParent)
 
--- Dossier séparé pour Highlight/BillboardGui : un BillboardGui imbriqué dans un ScreenGui ne s'affiche pas
-local EspFolder = new("Folder", { Name = randomName() }, GuiParent)
+if typeof(protectgui) == "function" then
+    pcall(protectgui, ScreenGui)
+end
+
+-- Filet de sécurité : si le conteneur choisi rejette/supprime l'UI, on bascule sur PlayerGui
+if not ScreenGui:IsDescendantOf(game) then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
 
 --==================================================================--
 -- NOTIFICATIONS
@@ -762,7 +790,7 @@ function ESP.Add(obj, category, label, color, part, attempt)
         OutlineTransparency = 0,
         DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
         Enabled = enabled,
-    }, EspFolder)
+    }, obj)
 
     local bb = new("BillboardGui", {
         Adornee = part,
@@ -772,7 +800,7 @@ function ESP.Add(obj, category, label, color, part, attempt)
         LightInfluence = 0,
         MaxDistance = 1000,
         Enabled = enabled,
-    }, EspFolder)
+    }, part)
 
     local text = new("TextLabel", {
         Size = UDim2.fromScale(1, 1),
@@ -1360,7 +1388,6 @@ function Hub.Unload()
     end
 
     ESP.Clear()
-    pcall(function() EspFolder:Destroy() end)
     pcall(function() ScreenGui:Destroy() end)
 
     if genv.AbyssHub == Hub then
@@ -1369,3 +1396,23 @@ function Hub.Unload()
 end
 
 notify("ABYSS HUB", "Chargé avec succès. Bonne chance dans l'hôtel.", Theme.Accent, 4)
+end
+
+local ok, err = xpcall(Main, function(e)
+    return tostring(e) .. "\n" .. debug.traceback()
+end)
+
+if not ok then
+    warn("[Abyss] Échec du chargement :\n" .. tostring(err))
+    sysNotify("ABYSS : ERREUR", string.sub(tostring(err), 1, 180), 15)
+    -- Nettoyage partiel pour qu'une relance reparte de zéro
+    local hub = genv.AbyssHub
+    if hub and type(hub.Unload) == "function" then
+        pcall(hub.Unload)
+    elseif hub and type(hub.Connections) == "table" then
+        for _, c in ipairs(hub.Connections) do
+            pcall(function() c:Disconnect() end)
+        end
+        genv.AbyssHub = nil
+    end
+end
