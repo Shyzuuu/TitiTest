@@ -214,7 +214,7 @@ if tool then
     check("Animation : cercle et 54 maillons de chaines crees", fx ~= nil and links == 54, tostring(links))
     tool.Activated:Fire()
     Mock.run(0.1)
-    check("Double activation refusee pendant l'animation", string.find(texts(), "Animation en cours", 1, true) ~= nil)
+    check("Double activation refusee pendant l'animation", string.find(texts(), "Occupe...", 1, true) ~= nil)
     Mock.run(4)
     check("Monstre banni a la fin", m1.Parent == nil)
     check("Effets nettoyes", W:FindFirstChild("AbyssCrossFX") == nil)

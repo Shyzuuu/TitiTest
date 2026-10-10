@@ -198,6 +198,7 @@ local Super = {
     TextButton = "GuiButton", ImageButton = "GuiButton", GuiButton = "GuiObject", GuiObject = "GuiBase2d",
     GuiBase2d = "Instance", Tool = "BackpackItem", BackpackItem = "Instance", BlurEffect = "PostEffect",
     DepthOfFieldEffect = "PostEffect", PostEffect = "Instance", PlayerGui = "BasePlayerGui", BasePlayerGui = "Instance",
+    ImageLabel = "GuiObject", ObjectValue = "ValueBase", StringValue = "ValueBase", ValueBase = "Instance",
 }
 
 local Events = {
@@ -205,7 +206,7 @@ local Events = {
     AncestryChanged = true, Destroying = true, MouseButton1Click = true, Activated = true, InputBegan = true,
     InputChanged = true, InputEnded = true, Equipped = true, Unequipped = true, CharacterAdded = true,
     PlayerAdded = true, PlayerRemoving = true, Heartbeat = true, RenderStepped = true, Stepped = true,
-    FocusLost = true, Focused = true, Triggered = true,
+    FocusLost = true, Focused = true, Triggered = true, PromptButtonHoldBegan = true,
 }
 
 local Defaults = {
@@ -497,6 +498,7 @@ end
 
 local jsonStore, jsonId = {}, 0
 local HttpService = service("HttpService")
+local ProximityPromptService = service("ProximityPromptService")
 HttpService.__custom.JSONEncode = function(_, t)
     jsonId = jsonId + 1
     jsonStore["json#" .. jsonId] = table.clone(t)
@@ -565,7 +567,7 @@ other.Character.Parent = Workspace
 local services = {
     Players = Players, RunService = RunService, UserInputService = UserInputService, Lighting = Lighting,
     HttpService = HttpService, TweenService = TweenService, ReplicatedStorage = ReplicatedStorage,
-    StarterGui = StarterGui, CoreGui = CoreGui, Workspace = Workspace,
+    StarterGui = StarterGui, CoreGui = CoreGui, Workspace = Workspace, ProximityPromptService = ProximityPromptService,
 }
 game.__custom = {
     GetService = function(_, name)

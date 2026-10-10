@@ -1,4 +1,4 @@
--- ABYSS PAINT // Delta Android. ASCII, < 32 Ko (au-dela Delta n'execute rien)
+-- ABYSS PAINT // Delta Android. ASCII < 32 Ko
 local Players = game:GetService("Players")
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -408,7 +408,7 @@ local function protect(i)
 		if Alive and i.Parent and Cfg[r[1]] then
 			i:Destroy()
 			protN = protN + 1
-			if protLabel then protLabel.Text = "Protections declenchees : " .. protN .. " (derniere : " .. r[2] .. ")" end
+			if protLabel then protLabel.Text = "Protections : " .. protN .. " (" .. r[2] .. ")" end
 		end
 	end)
 end
@@ -613,7 +613,7 @@ local function crucify(target)
 		if target.Parent then target:Destroy() end
 		fx:Destroy()
 		busy = false
-		if crossLabel then crossLabel.Text = okA and "Derniere cible : bannie" or ("Erreur : " .. tostring(e)) end
+		if crossLabel then crossLabel.Text = okA and "Cible bannie" or ("Erreur : " .. tostring(e)) end
 	end)
 end
 local function topModel(p)
@@ -622,7 +622,7 @@ local function topModel(p)
 	return p
 end
 local function useCross()
-	if busy then return notify("Crucifix", "Animation en cours...") end
+	if busy then return notify("Crucifix", "Occupe...") end
 	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	local target
@@ -701,12 +701,12 @@ toggle(P, "Alertes", "Alerts")
 toggle(P, "Anti-Screech", "AntiScreech")
 toggle(P, "Anti-A90 (exp.)", "AntiA90")
 toggle(P, "Anti-Halt (exp.)", "AntiHalt")
-protLabel = label(P, "Protections declenchees : 0")
+protLabel = label(P, "Protections : 0")
 P = page("Crucifix")
 button(P, "Obtenir le crucifix", giveCross)
 toggle(P, "Viser ce que je touche", "CrossAny")
 stepper(P, "Portee", "CrossRange", 10, 300, 10)
-crossLabel = label(P, "Visuel local : toi seul vois l'effet.")
+crossLabel = label(P, "Visuel local.")
 P = page("Script")
 button(P, "Fermer le script", function() G.AbyssStop() end)
 
@@ -715,12 +715,14 @@ local function stop()
 	Alive = false
 	for _, c in ipairs(Conns) do c:Disconnect() end
 	for i = #Cleanups, 1, -1 do pcall(Cleanups[i]) end
-	if G.AbyssStop == stop then G.AbyssStop = nil end
+	if G.AbyssStop == stop then G.AbyssStop, G.AbyssAPI = nil, nil end
 end
 G.AbyssStop = stop
+-- API pour Abyss Extra
+G.AbyssAPI = { track = track, untrack = untrack, process = process, Names = Names, CatInfo = CatInfo, Cfg = Cfg, notify = notify, Track = Track, alive = function() return Alive end }
 CloseB.MouseButton1Click:Connect(stop)
 select(1)
-notify("ABYSS PAINT", "Charge ! Bouton PAINT pour ouvrir.")
+notify("ABYSS PAINT", "Charge ! Bouton PAINT.")
 end)
 
 if ok then
