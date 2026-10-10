@@ -213,8 +213,10 @@ local Defaults = {
     GuiObject = { Visible = true, BackgroundTransparency = 0, Text = "", TextSize = 14, Rotation = 0,
         AbsoluteSize = V2(100, 30), AbsolutePosition = V2(0, 0) },
     LayerCollector = { Enabled = true },
-    BasePart = { Anchored = false, CanCollide = true, Transparency = 0, LocalTransparencyModifier = 0, Size = V3(1, 1, 1) },
-    Humanoid = { WalkSpeed = 16, JumpPower = 50, JumpHeight = 7.2, UseJumpPower = false, Health = 100, MaxHealth = 100 },
+    BasePart = { Anchored = false, CanCollide = true, Transparency = 0, LocalTransparencyModifier = 0, Size = V3(1, 1, 1),
+        AssemblyLinearVelocity = V3(0, 0, 0) },
+    Humanoid = { WalkSpeed = 16, JumpPower = 50, JumpHeight = 7.2, UseJumpPower = false, Health = 100, MaxHealth = 100,
+        MoveDirection = V3(0, 0, 0), Sit = false, PlatformStand = false },
     Highlight = { Enabled = true, FillTransparency = 0.5 },
     ProximityPrompt = { HoldDuration = 1, MaxActivationDistance = 10, Enabled = true },
     Camera = { FieldOfView = 70, ViewportSize = V2(800, 400) },
@@ -521,7 +523,7 @@ local function makeCharacter(name)
     local root = new("Part", { Name = "HumanoidRootPart", CFrame = CF(0, 3, 0) })
     root.Parent = char
     char.PrimaryPart = root
-    new("Humanoid").Parent = char
+    new("Humanoid", { RootPart = root }).Parent = char
     new("Part", { Name = "RightHand", CFrame = CF(1, 3, 0) }).Parent = char
     return char
 end

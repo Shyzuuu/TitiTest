@@ -106,6 +106,48 @@ click("Fullbright")
 Mock.run(0.2)
 check("Fullbright restaure", L.Ambient == ambient0)
 
+-- Vitesse : plafond sur par defaut, libre si desactive
+local hum, hrp = LP.Character.Humanoid, LP.Character.HumanoidRootPart
+local function plus(prefix)
+    for _, d in ipairs(gui():GetDescendants()) do
+        if d.ClassName == "TextLabel" and string.sub(d.Text, 1, #prefix) == prefix then
+            for _, b in ipairs(d.Parent:GetChildren()) do
+                if b.ClassName == "TextButton" and b.Text == "+" then b.MouseButton1Click:Fire() return end
+            end
+        end
+    end
+    check("stepper '" .. prefix .. "' present", false)
+end
+-- le balayage "tous les boutons" laisse la vitesse a 25 (clamp a 15 puis +5 +5) => 35 apres deux "+"
+plus("Vitesse : ")
+plus("Vitesse : ")
+click("Speed")
+Mock.run(0.2)
+check("Vitesse sure plafonne a 21", hum.WalkSpeed == 21, tostring(hum.WalkSpeed))
+click("Vitesse sure")
+Mock.run(0.2)
+check("Vitesse libre sans plafond", hum.WalkSpeed == 35, tostring(hum.WalkSpeed))
+click("Speed")
+Mock.run(0.2)
+check("Vitesse restauree", hum.WalkSpeed == 16, tostring(hum.WalkSpeed))
+
+-- Anti-glisse : inertie horizontale annulee, Y conserve, direction suivie
+click("Anti-glisse")
+hrp.AssemblyLinearVelocity = Mock.V3(40, -5, 30)
+Mock.run(0.1)
+local v = hrp.AssemblyLinearVelocity
+check("Anti-glisse : arret net sans input", v.X == 0 and v.Z == 0 and v.Y == -5, tostring(v.X) .. "," .. tostring(v.Z))
+hum.MoveDirection = Mock.V3(1, 0, 0)
+hrp.AssemblyLinearVelocity = Mock.V3(5, 0, 50)
+Mock.run(0.1)
+v = hrp.AssemblyLinearVelocity
+check("Anti-glisse : vitesse alignee sur l'input", v.X == 16 and v.Z == 0, tostring(v.X) .. "," .. tostring(v.Z))
+hum.MoveDirection = Mock.V3(0, 0, 0)
+click("Anti-glisse")
+hrp.AssemblyLinearVelocity = Mock.V3(40, 0, 0)
+Mock.run(0.1)
+check("Anti-glisse coupe : physique libre", hrp.AssemblyLinearVelocity.X == 40)
+
 -- Crucifix : sequence complete sur un monstre, puis reutilisation
 local function monster(name, z)
     local m = new("Model", { Name = name })

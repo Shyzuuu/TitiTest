@@ -64,7 +64,7 @@ local Cats = {
 local CatInfo = {}
 local Cfg = {
   Esp = true, Labels = true, Chams = true, Names = true, Dist = true, Health = true, MaxDist = 500,
-  Fullbright = false, NoFog = false, Speed = false, SpeedV = 20, Fov = false, FovV = 90,
+  Fullbright = false, NoFog = false, Speed = false, SpeedV = 20, SafeSpeed = true, AntiSlide = false, Fov = false, FovV = 90,
   Alerts = true, AntiScreech = false, AntiA90 = false, AntiHalt = false,
   CrossAny = true, CrossRange = 80,
 }
@@ -441,9 +441,23 @@ on(RS.Heartbeat, function()
     snap()
   end
   local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-  if hum and hum.Health > 0 and Cfg.Speed then
+  if not hum or hum.Health <= 0 then return end
+  if Cfg.Speed then
     defSpeed = defSpeed or hum.WalkSpeed
-    hum.WalkSpeed = Cfg.SpeedV
+    -- Plafond 21 : au-dela la distance parcourue depasse la tolerance serveur => rollback
+    hum.WalkSpeed = Cfg.SafeSpeed and math.min(Cfg.SpeedV, 21) or Cfg.SpeedV
+  end
+  -- Anti-glisse : la vitesse horizontale suit exactement l'input, l'inertie d'un modificateur
+  -- (sol glissant, poussee) est annulee ; Y intact pour ne pas casser saut et chute
+  local root = Cfg.AntiSlide and not hum.Sit and not hum.PlatformStand and hum.RootPart
+  if root then
+    local v, md = root.AssemblyLinearVelocity, hum.MoveDirection
+    local ws = hum.WalkSpeed
+    if md.Magnitude < 0.05 then
+      if v.X ~= 0 or v.Z ~= 0 then root.AssemblyLinearVelocity = Vector3.new(0, v.Y, 0) end
+    else
+      root.AssemblyLinearVelocity = Vector3.new(md.X * ws, v.Y, md.Z * ws)
+    end
   end
 end)
 local function lightOff() if not Cfg.Fullbright and not Cfg.NoFog then restore() end end
@@ -645,7 +659,9 @@ toggle(P, "Fullbright", "Fullbright")
 toggle(P, "Sans brouillard", "NoFog")
 toggle(P, "Speed", "Speed")
 stepper(P, "Vitesse", "SpeedV", 15, 100, 5)
-label(P, "Au-dela de ~22, l'anti-cheat de DOORS te ramene en arriere.")
+toggle(P, "Vitesse sure (max 21)", "SafeSpeed")
+label(P, "Sans vitesse sure : rollback au-dela de ~22 (verif serveur).")
+toggle(P, "Anti-glisse", "AntiSlide")
 toggle(P, "FOV", "Fov")
 stepper(P, "FOV", "FovV", 70, 120, 5)
 P = page("Entites")
