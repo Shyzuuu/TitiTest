@@ -1,4 +1,4 @@
--- ABYSS PAINT // theme MS Paint - Delta Android. ASCII et < 30 Ko (au-dela, Delta n'execute rien).
+-- ABYSS PAINT // theme MS Paint - Delta Android. ASCII et ~32 Ko (bien plus gros, Delta n'execute rien).
 local Players = game:GetService("Players")
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
