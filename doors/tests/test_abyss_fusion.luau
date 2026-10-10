@@ -35,6 +35,9 @@ mods.Parent = rl
 rl.Parent = mg
 mg.Parent = init
 init.Parent = mui
+-- texte du jeu avec sa police importee (celle du logo DOORS)
+new("TextLabel", { Name = "Caption", Text = "ROOM 001", FontFace = { Family = "rbxassetid://doorsfont" } }).Parent = mui
+new("TextLabel", { Name = "Other", Text = "x", FontFace = { Family = "rbxasset://fonts/families/GothamSSm.json" } }).Parent = mui
 mui.Parent = LP.PlayerGui
 
 Mock.exec(paint, "AbyssPaint", (Mock.env()))
@@ -70,6 +73,28 @@ local function tag(part)
     return false, ""
 end
 
+local function titleFont()
+    for _, d in ipairs(gui:GetDescendants()) do
+        if d.ClassName == "TextLabel" and string.find(d.Text, "ABYSS PAINT.EXE", 1, true) then return d end
+    end
+end
+local tl = titleFont()
+check("Police DOORS du jeu appliquee au script", tl and tl.FontFace and tl.FontFace.Family == "rbxassetid://doorsfont",
+    tl and tl.FontFace and tl.FontFace.Family)
+local fbtn
+for _, d in ipairs(gui:GetDescendants()) do
+    if d.ClassName == "TextButton" and string.find(d.Text, "Police :", 1, true) then fbtn = d end
+end
+check("Bouton police affiche DOORS", fbtn and fbtn.Text == "Police : DOORS (police du jeu)", fbtn and fbtn.Text)
+click("Police :")
+Mock.run(0.1)
+check("Police Paint : police d'origine rendue", tl.Font == Mock.Enum.Font.Arcade, tostring(tl.Font))
+click("Police :")
+Mock.run(0.1)
+check("Police Arcade : FontFace changee", tl.FontFace.Family == "enum:" .. tostring(Mock.Enum.Font.Arcade), tostring(tl.FontFace.Family))
+for _ = 1, 5 do click("Police :") end
+Mock.run(0.1)
+check("Retour a la police DOORS apres un tour complet", tl.FontFace.Family == "rbxassetid://doorsfont", tostring(tl.FontFace.Family))
 check("Floor detecte : Mines", string.find(texts(), "Floor detecte : Mines", 1, true) ~= nil, texts())
 check("Barre d'etat : floor affiche", string.find(texts(), "| Mines", 1, true) ~= nil, texts())
 Mock.run(0.6)

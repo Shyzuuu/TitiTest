@@ -47,10 +47,16 @@ local function loop(dt, fn)
 		end
 	end)
 end
+-- Police : chaque texte cree garde sa police d'origine (retour arriere) et prend la police choisie
+local Texts, curFace = setmetatable({}, { __mode = "k" }), nil
 local function new(class, props, parent)
 	local o = Instance.new(class)
 	if props.Text then props.Font, props.TextColor3, props.TextSize = props.Font or CODE, props.TextColor3 or BLACK, props.TextSize or 13 end
 	for k, v in pairs(props) do o[k] = v end
+	if props.Text then
+		Texts[o] = props.Font
+		if curFace then pcall(function() o.FontFace = curFace end) end
+	end
 	o.Parent = parent
 	return o
 end
@@ -74,7 +80,7 @@ local Cfg = {
 	AntiVacuum = false, AntiAlma = false, AntiRansom = false, AntiTrash = false, Oxygen = false, Haste = false,
 	LibCode = false, InstantPrompt = false, Jump = false, NoShake = false, HideSeeThrough = false, NoVignette = false,
 	CrossAny = true, CrossRange = 80, AutoLoot = false, LootItems = true, RushBanner = true,
-	AntiRollback = true, Honcho = true, HonchoAuto = false,
+	AntiRollback = true, Honcho = true, HonchoAuto = false, FontIdx = 1,
 }
 for _, c in ipairs(Cats) do
 	CatInfo[c[1]] = c
@@ -1285,6 +1291,60 @@ local function giveCross()
 end
 table.insert(Cleanups, function() if crossTool then crossTool:Destroy() end end)
 
+-- ===== Police d'ecriture =====
+-- "DOORS" = la police exacte du jeu, lue sur les textes de son interface (MainUI) : police importee
+-- par le jeu (famille rbxassetid), donc identique a celle du logo / des captions.
+local FONTS = { { "DOORS (police du jeu)" }, { "Paint (Code)" }, { "Arcade", Enum.Font.Arcade }, { "Oswald", Enum.Font.Oswald },
+	{ "Gotham", Enum.Font.GothamBold }, { "Cartoon", Enum.Font.Cartoon }, { "Bangers", Enum.Font.Bangers } }
+local doorsFace
+local function findDoorsFont()
+	if doorsFace then return doorsFace end
+	local count, best, bestN = {}, nil, 0
+	for _, gui in ipairs(PG:GetChildren()) do
+		if gui ~= Gui and gui ~= Boot and gui:IsA("ScreenGui") then
+			for _, d in ipairs(gui:GetDescendants()) do
+				if d:IsA("TextLabel") or d:IsA("TextButton") then
+					local okF, face = pcall(function() return d.FontFace end)
+					local fam = okF and face and tostring(face.Family) or ""
+					-- police importee par le jeu : la plus utilisee dans son interface
+					if string.find(fam, "rbxassetid", 1, true) then
+						count[fam] = (count[fam] or 0) + 1
+						if count[fam] > bestN then best, bestN = face, count[fam] end
+					end
+				end
+			end
+		end
+	end
+	doorsFace = best
+	return best
+end
+local fontBtn
+local function applyFont()
+	local f = FONTS[Cfg.FontIdx]
+	local face
+	if Cfg.FontIdx == 1 then
+		face = findDoorsFont()
+	elseif f[2] then
+		face = Font.fromEnum(f[2])
+	end
+	curFace = face
+	for o, orig in pairs(Texts) do
+		if o.Parent then
+			pcall(function()
+				if face then o.FontFace = face else o.Font = orig end
+			end)
+		end
+	end
+	if fontBtn then
+		fontBtn.Text = "Police : " .. f[1] .. ((Cfg.FontIdx == 1 and not face) and " (en attente du jeu)" or "")
+	end
+	return face
+end
+-- la MainUI de DOORS arrive parfois apres le script : on reessaie jusqu'a trouver la police
+loop(2, function()
+	if Cfg.FontIdx == 1 and not doorsFace and findDoorsFont() then applyFont() end
+end)
+
 local P = page("ESP")
 section(P, "Affichage")
 toggle(P, "ESP actif", "Esp")
@@ -1384,6 +1444,15 @@ toggle(P, "Viser ce que je touche", "CrossAny")
 stepper(P, "Portee", "CrossRange", 10, 300, 10)
 crossLabel = label(P, "Visuel local.")
 P = page("Script")
+section(P, "Style")
+button(P, "Police : DOORS (police du jeu)", function()
+	set("FontIdx", Cfg.FontIdx % #FONTS + 1)
+	applyFont()
+end)
+for _, d in ipairs(P:GetDescendants()) do
+	if d:IsA("TextButton") and string.sub(d.Text, 1, 8) == "Police :" then fontBtn = d end
+end
+label(P, "Touche pour changer la police de tout le script. DOORS = exactement la police du jeu.")
 section(P, "Script")
 label(P, "Abyss Paint - DOORS. Bouton PAINT : deplacable, appui = ouvrir / fermer. Palette en bas : couleur du titre.")
 button(P, "Fermer le script", function() G.AbyssStop() end)
@@ -1398,6 +1467,7 @@ end
 G.AbyssStop = stop
 CloseB.MouseButton1Click:Connect(stop)
 select(1)
+applyFont()
 notify("ABYSS PAINT", "Charge ! Bouton PAINT.")
 end)
 

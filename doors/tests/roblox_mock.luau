@@ -655,6 +655,10 @@ function Mock.env()
         end,
         os = setmetatable({ clock = function() return Mock.now end }, { __index = os }),
         RaycastParams = { new = function() return {} end },
+        Font = {
+            fromEnum = function(e) return { Family = "enum:" .. tostring(e) } end,
+            new = function(family) return { Family = family } end,
+        },
         PhysicalProperties = { new = function(d, f, e, fw, ew)
             return { Density = d, Friction = f, Elasticity = e, FrictionWeight = fw, ElasticityWeight = ew }
         end },
@@ -668,7 +672,7 @@ end
 Mock.game, Mock.Workspace, Mock.Lighting, Mock.Players, Mock.LP, Mock.RunService = game, Workspace, Lighting, Players, LP, RunService
 Mock.UIS, Mock.Camera, Mock.Other, Mock.ReplicatedStorage = UserInputService, Camera, other, ReplicatedStorage
 Mock.C3, Mock.V3, Mock.CF = C3, V3, CF
-Mock.InstMT, Mock.CoreGui = InstMT, CoreGui
+Mock.InstMT, Mock.CoreGui, Mock.Enum = InstMT, CoreGui, Enum
 
 -- Charge et execute un script dans l'environnement simule (dans une coroutine, comme un executeur)
 function Mock.exec(source, chunkName, env)
