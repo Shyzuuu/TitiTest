@@ -1,4 +1,4 @@
--- ABYSS PAINT // theme MS Paint - Delta Android. ASCII et ~32 Ko (bien plus gros, Delta n'execute rien).
+-- ABYSS PAINT // theme MS Paint - Delta Android. ASCII et ~31 Ko (bien plus gros, Delta n'execute rien).
 local Players = game:GetService("Players")
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -63,7 +63,7 @@ local Cats = {
 }
 local CatInfo = {}
 local Cfg = {
-  Esp = true, Boxes = true, Names = true, Dist = true, Health = true, Chams = false, MaxDist = 500,
+  Esp = true, Labels = true, Chams = true, Names = true, Dist = true, Health = true, MaxDist = 500,
   Fullbright = false, NoFog = false, Speed = false, SpeedV = 20, Fov = false, FovV = 90,
   Alerts = true, AntiScreech = false, AntiA90 = false, AntiHalt = false,
   CrossAny = true, CrossRange = 80,
@@ -75,7 +75,6 @@ end
 
 local Gui = new("ScreenGui", { Name = "AbyssPaint", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 999 }, PG)
 table.insert(Cleanups, function() Gui:Destroy() end)
-local Layer = new("Frame", { Size = U2(1, 0, 1, 0), BackgroundTransparency = 1 }, Gui)
 
 local Notifs = new("Frame", { Size = U2(0, 240, 1, -20), Position = U2(1, -250, 0, 10), BackgroundTransparency = 1 }, Gui)
 new("UIListLayout", { Padding = UDim.new(0, 6), VerticalAlignment = Enum.VerticalAlignment.Bottom }, Notifs)
@@ -226,7 +225,6 @@ Float.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
 MinB.MouseButton1Click:Connect(function() Main.Visible = false end)
 
 local Track, Pending = {}, {}
-local Shown = {}
 local function isDoors() return workspace:FindFirstChild("CurrentRooms") ~= nil end
 local function getPart(o)
   if o:IsA("BasePart") then return o end
@@ -239,6 +237,7 @@ local function untrack(o)
   Track[o] = nil
   e.conn:Disconnect()
   if e.hl then e.hl:Destroy() end
+  e.bb:Destroy()
 end
 local function track(o, cat, label, partName)
   if not Alive or Track[o] or not o.Parent or o:IsDescendantOf(Gui) then return end
@@ -252,6 +251,12 @@ local function track(o, cat, label, partName)
   local hum = o:FindFirstChildOfClass("Humanoid")
   local e = { o = o, cat = cat, label = label, part = part, hum = hum, dist = 0,
   h = hum and 6 or math.clamp(size.Y, 1, 30), r = hum and 0.6 or math.clamp(math.max(size.X, size.Z) / math.max(size.Y, 0.1), 0.3, 2) }
+  local col = CatInfo[cat][3]
+  -- Etiquette attachee a la piece : methode d'Abyss Lite, confirmee sur Delta Android
+  e.bb = new("BillboardGui", { Adornee = part, Size = U2(0, 200, 0, 46), StudsOffset = V3(0, e.h / 2 + 1.5, 0),
+  AlwaysOnTop = true, Enabled = false }, part)
+  e.tx = new("TextLabel", { BackgroundTransparency = 1, Size = U2(1, 0, 1, 0), Font = CODE, TextSize = 14,
+  TextColor3 = col, TextStrokeTransparency = 0, TextStrokeColor3 = BLACK, Text = label }, e.bb)
   -- Liberation immediate quand la cible quitte le jeu : pas de fuite memoire
   e.conn = o.AncestryChanged:Connect(function()
     if not o:IsDescendantOf(workspace) then untrack(o) end
@@ -337,11 +342,10 @@ loop(0.2, function()
       e.dist = root and (e.part.Position - root.Position).Magnitude or 0
       -- ESP joueurs limite a DOORS (cooperatif) : pas de wallhack dans les jeux JcJ
       local vis = Cfg.Esp and Cfg["E_" .. e.cat] and e.dist <= Cfg.MaxDist and (e.cat ~= "Players" or doors)
+      e.on = false
       if vis then
         e.s = CatInfo[e.cat][4] * 100000 + e.dist
         table.insert(list, e)
-      elseif e.hl then
-        e.hl.Enabled = false
       end
     end
   end
@@ -349,6 +353,11 @@ loop(0.2, function()
   for i = MAX + 1, #list do list[i] = nil end
   for i, e in ipairs(list) do
     local col = CatInfo[e.cat][3]
+    e.on = true
+    local t = Cfg.Names and e.label or ""
+    if Cfg.Dist then t = t .. "\n[" .. math.floor(e.dist) .. "m]" end
+    if e.hum and Cfg.Health then t = t .. " " .. math.floor(e.hum.Health) .. "/" .. math.floor(e.hum.MaxHealth) .. "PV" end
+    e.tx.Text = t
     if Cfg.Chams and i <= 24 then
       e.hl = e.hl or new("Highlight", { Adornee = e.o, FillColor = col, OutlineColor = col, FillTransparency = 0.75,
         DepthMode = Enum.HighlightDepthMode.AlwaysOnTop }, e.o)
@@ -357,62 +366,15 @@ loop(0.2, function()
       e.hl.Enabled = false
     end
   end
-  Shown = list
+  for _, e in pairs(Track) do
+    local want = e.on and Cfg.Labels
+    if e.bb.Enabled ~= want then e.bb.Enabled = want end
+    if not e.on and e.hl and e.hl.Enabled then e.hl.Enabled = false end
+  end
   if countLabel then countLabel.Text = "Cibles suivies : " .. total .. " | dessinees : " .. #list end
   Status.Text = " ESP " .. (Cfg.Esp and "ON" or "OFF") .. " | cibles " .. total .. " | Fullbright " .. (Cfg.Fullbright and "ON" or "OFF")
 end)
 
-local Slots = {}
-local function slot(i)
-  if Slots[i] then return Slots[i] end
-  local box = new("Frame", { BackgroundTransparency = 1, Visible = false }, Layer)
-  local st = new("UIStroke", { Thickness = 2 }, box)
-  local function txt(y)
-    return new("TextLabel", { BackgroundTransparency = 1, Size = U2(0, 220, 0, 14), Position = U2(0.5, -110, y, y == 0 and -16 or 2),
-      Font = CODE, TextSize = 13, TextStrokeTransparency = 0, TextStrokeColor3 = BLACK }, box)
-  end
-  local bar = new("Frame", { Size = U2(0, 4, 1, 0), Position = U2(0, -7, 0, 0), BackgroundColor3 = BLACK, BorderSizePixel = 0 }, box)
-  local fill = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = U2(0, 0, 1, 0), BorderSizePixel = 0 }, bar)
-  Slots[i] = { box = box, st = st, top = txt(0), bot = txt(1), bar = bar, fill = fill }
-  return Slots[i]
-end
-on(RS.RenderStepped, function()
-  local cam, n = workspace.CurrentCamera, 0
-  if Cfg.Esp and cam then
-    for _, e in ipairs(Shown) do
-      local part = e.part
-      if part.Parent then
-        local c = part.Position
-        local a, onA = cam:WorldToViewportPoint(c + V3(0, e.h / 2, 0))
-        local b, onB = cam:WorldToViewportPoint(c - V3(0, e.h / 2, 0))
-        if (onA or onB) and a.Z > 0 and b.Z > 0 then
-          n = n + 1
-          local s, col = slot(n), CatInfo[e.cat][3]
-          local h = math.max(math.abs(b.Y - a.Y), 8)
-          local w = math.max(h * e.r, 8)
-          s.box.Visible = true
-          s.box.Position = U2(0, (a.X + b.X) / 2 - w / 2, 0, math.min(a.Y, b.Y))
-          s.box.Size = U2(0, w, 0, h)
-          s.st.Color, s.st.Transparency = col, Cfg.Boxes and 0 or 1
-          s.top.Text, s.top.TextColor3, s.top.Visible = e.label, col, Cfg.Names
-          local info = Cfg.Dist and ("[" .. math.floor(e.dist) .. "m]") or ""
-          local hum = e.hum
-          if hum and Cfg.Health then info = info .. " " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth) .. "PV" end
-          s.bot.Text, s.bot.TextColor3, s.bot.Visible = info, WHITE, info ~= ""
-          s.bar.Visible = hum ~= nil and Cfg.Health
-          if hum then
-            local r = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
-            s.fill.Size, s.fill.BackgroundColor3 = U2(1, 0, r, 0), r > 0.5 and GREEN or RED
-          end
-        end
-      end
-    end
-  end
-  for i = n + 1, #Slots do
-    local s = Slots[i]
-    if s.box.Visible then s.box.Visible = false end
-  end
-end)
 table.insert(Cleanups, function() for o in pairs(Track) do untrack(o) end end)
 
 local Rules = { Screech = { "AntiScreech", "SCREECH" }, A90 = { "AntiA90", "A-90" }, Shade = { "AntiHalt", "HALT" } }
@@ -660,19 +622,30 @@ table.insert(Cleanups, function() if crossTool then crossTool:Destroy() end end)
 local P = page("ESP")
 toggle(P, "ESP actif", "Esp")
 countLabel = label(P, "Cibles suivies : 0")
-toggle(P, "Boites", "Boxes")
+toggle(P, "Etiquettes 3D", "Labels")
 toggle(P, "Noms", "Names")
 toggle(P, "Distance", "Dist")
 toggle(P, "Vie", "Health")
 toggle(P, "Chams (contours)", "Chams")
 stepper(P, "Distance max", "MaxDist", 50, 2000, 50)
 for _, c in ipairs(Cats) do toggle(P, c[2], "E_" .. c[1], c[3]) end
+button(P, "Tester l'ESP (cible 10s)", function()
+  local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+  if not root then return notify("ESP", "Pas de personnage.") end
+  local t = new("Part", { Name = "AbyssEspTest", Anchored = true, CanCollide = false, Size = V3(2, 4, 2), Material = Enum.Material.Neon,
+  Color = RED, CFrame = root.CFrame * CFrame.new(0, 0, -10) }, workspace)
+  set("E_Monsters", true)
+  track(t, "Monsters", "TEST ESP")
+  notify("ESP", "Cible TEST ESP devant toi. Rien ? Dis-le.")
+  task.delay(10, function() t:Destroy() end)
+end)
 label(P, "ESP joueurs actif uniquement dans DOORS (cooperatif).")
 P = page("Monde")
 toggle(P, "Fullbright", "Fullbright")
 toggle(P, "Sans brouillard", "NoFog")
 toggle(P, "Speed", "Speed")
-stepper(P, "Vitesse", "SpeedV", 15, 30, 1)
+stepper(P, "Vitesse", "SpeedV", 15, 100, 5)
+label(P, "Au-dela de ~22, l'anti-cheat de DOORS te ramene en arriere.")
 toggle(P, "FOV", "Fov")
 stepper(P, "FOV", "FovV", 70, 120, 5)
 P = page("Entites")

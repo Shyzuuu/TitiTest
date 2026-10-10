@@ -62,29 +62,42 @@ for _, d in ipairs(gui():GetDescendants()) do
     if d.ClassName == "TextButton" and d.Text ~= "X" and d.Text ~= "_" and not string.find(d.Text, "Fermer", 1, true) then table.insert(all, d) end
 end
 for _, b in ipairs(all) do b.MouseButton1Click:Fire() Mock.run(0.05) b.MouseButton1Click:Fire() Mock.run(0.05) end
-Mock.run(0.5)
+Mock.run(11) -- laisse disparaitre les cibles creees par "Tester l'ESP"
 check(#all .. " boutons cliques deux fois sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
 
--- ESP : monstre generique + porte + coequipier, avec nom, distance et vie
+-- ESP : etiquettes attachees aux cibles (methode confirmee sur Delta)
+local function tag(part)
+    local bb = part and part:FindFirstChildWhichIsA("BillboardGui")
+    if not bb then return false, "" end
+    return bb.Enabled, bb:FindFirstChildWhichIsA("TextLabel").Text
+end
 click("Portes")
 Mock.run(0.6)
-local t = texts()
-check("ESP monstre generique : nom affiche", string.find(t, "Zombie", 1, true) ~= nil, t)
-check("ESP monstre : vie affichee", string.find(t, "40/100PV", 1, true) ~= nil, t)
-check("ESP porte : 'Porte 8'", string.find(t, "Porte 8", 1, true) ~= nil, t)
-check("ESP joueur DOORS : @nom et vie", string.find(t, "Friend (@Friend)", 1, true) ~= nil and string.find(t, "100/100PV", 1, true) ~= nil, t)
-check("Compteur de cibles (barre d'etat)", string.find(t, "cibles 3", 1, true) ~= nil, t)
+local on1, t1 = tag(npcRoot)
+check("ESP monstre generique : nom + vie", on1 and string.find(t1, "Zombie", 1, true) and string.find(t1, "40/100PV", 1, true), t1)
+check("ESP monstre : contour actif", npc:FindFirstChildWhichIsA("Highlight") ~= nil and npc:FindFirstChildWhichIsA("Highlight").Enabled)
+local on2, t2 = tag(door.Door)
+check("ESP porte : 'Porte 8' et distance", on2 and string.find(t2, "Porte 8", 1, true) and string.find(t2, "m]", 1, true), t2)
+local on3, t3 = tag(Mock.Other.Character.HumanoidRootPart)
+check("ESP joueur DOORS : @nom et vie", on3 and string.find(t3, "Friend (@Friend)", 1, true) and string.find(t3, "100/100PV", 1, true), t3)
+check("Compteur de cibles (barre d'etat)", string.find(texts(), "cibles 3", 1, true) ~= nil, texts())
 npc:Destroy()
 Mock.run(0.6)
-t = texts()
-check("Monstre detruit : retire de l'ESP", string.find(t, "Zombie", 1, true) == nil and string.find(t, "cibles 2", 1, true) ~= nil, t)
+check("Monstre detruit : retire (memoire liberee)", string.find(texts(), "cibles 2", 1, true) ~= nil, texts())
 
--- Hors DOORS : l'ESP joueurs ne s'affiche plus
 rooms.Parent = nil
 Mock.run(0.6)
-check("Hors DOORS : joueurs masques", string.find(texts(), "@Friend", 1, true) == nil)
+check("Hors DOORS : etiquette joueur masquee", not (tag(Mock.Other.Character.HumanoidRootPart)))
 rooms.Parent = W
 Mock.run(0.3)
+
+click("Tester l'ESP")
+Mock.run(0.6)
+local test = W:FindFirstChild("AbyssEspTest")
+local on4, t4 = tag(test)
+check("Bouton 'Tester l'ESP' : cible visible", test ~= nil and on4 and string.find(t4, "TEST ESP", 1, true), t4)
+Mock.run(10)
+check("Cible de test retiree apres 10 s", W:FindFirstChild("AbyssEspTest") == nil)
 
 click("Fullbright")
 Mock.run(0.2)
