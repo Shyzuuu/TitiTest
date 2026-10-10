@@ -1,7 +1,7 @@
 -- ABYSS HUB V5 // DOORS
 -- Script client unique (executeur mobile ou LocalScript). ASCII uniquement : les editeurs
 -- mobiles abiment les caracteres accentues et rendent le script inexecutable.
-local VERSION = "5.0"
+local VERSION = "5.1"
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -189,6 +189,8 @@ def("FovValue", 90, 70, 120)
 -- Entites
 def("Alerts", true)
 def("AntiScreech", false)
+def("AntiA90", false)
+def("AntiHalt", false)
 -- Auto
 def("InstantPrompt", false)
 def("Reach", false)
@@ -1000,6 +1002,7 @@ local AlertText = {
     BLITZ = "Cache-toi vite !", LOOKMAN = "Ne le regarde pas !", ["A-60"] = "Cache-toi tout de suite !",
     ["A-120"] = "Cache-toi tout de suite !", GLOOMBATS = "Eteins ta lumiere !", GRUMBLE = "Evite les Grumbles !",
     JEFF = "Jeff est la !", SCREECH = "Regarde-le pour le faire fuir !", HALT = "Fais demi-tour quand c'est bleu.",
+    ["A-90"] = "Ne bouge plus !",
 }
 
 local lastAlert = {}
@@ -1327,6 +1330,50 @@ end)
 --============================================================--
 -- MODULE ENTITES (Screech / Halt cote client)
 --============================================================--
+-- Seuls les objets d'entites crees sur le client (camera, PlayerGui) peuvent etre supprimes ici :
+-- les degats et apparitions decides par le serveur restent hors de portee d'un script local
+local Protect = { count = 0, last = "Aucune" }
+local ProtectRules = { Screech = "AntiScreech", A90 = "AntiA90", Shade = "AntiHalt" }
+local ProtectAlert = { Screech = "SCREECH", A90 = "A-90", Shade = "HALT" }
+
+function Protect.check(inst)
+    local key = ProtectRules[inst.Name]
+    if not key or inst:IsDescendantOf(Gui) then return end
+    alert(ProtectAlert[inst.Name])
+    if not Cfg[key] then return end
+    -- Differe : l'objet doit avoir fini d'etre insere par le jeu avant d'etre detruit
+    task.defer(function()
+        if not Alive or not inst.Parent or not Cfg[key] then return end
+        local name = inst.Name
+        inst:Destroy()
+        Protect.count = Protect.count + 1
+        Protect.last = name .. " (" .. os.date("%H:%M:%S") .. ")"
+        Log.add("INFO", "Entites", name .. " supprime par " .. key)
+    end)
+end
+
+function Protect.scan()
+    local cam = workspace.CurrentCamera
+    if cam then
+        for _, c in ipairs(cam:GetChildren()) do Protect.check(c) end
+    end
+    for _, d in ipairs(PlayerGui:GetDescendants()) do
+        if ProtectRules[d.Name] then Protect.check(d) end
+    end
+end
+
+-- Test du nom en premier : PlayerGui recoit beaucoup d'objets (dont notre propre interface)
+on("Entites", PlayerGui.DescendantAdded, function(d)
+    if ProtectRules[d.Name] then Protect.check(d) end
+end)
+
+for _, key in ipairs({ "AntiScreech", "AntiA90", "AntiHalt" }) do
+    bind(key, "Entites", function(new)
+        if new then Protect.scan() end
+        Log.add("INFO", "Entites", key .. (new and " active" or " desactive"))
+    end)
+end
+
 local camConn
 local function hookCam(cam)
     if camConn then camConn:Disconnect() camConn = nil end
@@ -1335,19 +1382,7 @@ local function hookCam(cam)
     camConn = cam.ChildAdded:Connect(function(c)
         guard("Entites", function()
             trackBlur(c)
-            if c.Name == "Screech" then
-                alert("SCREECH")
-                if Cfg.AntiScreech then
-                    task.defer(function()
-                        if c.Parent then
-                            c:Destroy()
-                            Log.add("INFO", "Entites", "Screech supprime (anti-Screech)")
-                        end
-                    end)
-                end
-            elseif c.Name == "Shade" then
-                alert("HALT")
-            end
+            Protect.check(c)
         end)
     end)
 end
@@ -1800,7 +1835,13 @@ local PEnt, iEnt = newPage("Entites", "Entites", "Entites suivies en direct", "N
 section(PEnt, "Options")
 toggle(PEnt, "ESP entites", "Esp_Entities")
 toggle(PEnt, "Alertes", "Alerts")
+section(PEnt, "Protection (objets cote client)")
 toggle(PEnt, "Anti-Screech", "AntiScreech")
+toggle(PEnt, "Anti-A90 (experimental)", "AntiA90")
+toggle(PEnt, "Anti-Halt (experimental)", "AntiHalt")
+local pCount = info(PEnt, "Protections declenchees")
+local pLast = info(PEnt, "Derniere")
+note(PEnt, "Impossible cote client, donc absents : god mode, objets illimites, teleportation aux portes 50/100, anti-Figure. Le serveur decide de la vie, de l'inventaire, des salles et de Figure.")
 section(PEnt, "Liste")
 local entEmpty = note(PEnt, "Aucune entite suivie.")
 local EntRows = {}
@@ -2028,6 +2069,8 @@ every("UI", 0.5, function()
         local hum = humanoid()
         plState(hum and string.format("%.1f", hum.WalkSpeed) or "Pas de personnage")
     elseif currentPage == iEnt then
+        pCount(tostring(Protect.count))
+        pLast(Protect.last)
         local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         local list = {}
         for obj, e in pairs(ESP.reg) do

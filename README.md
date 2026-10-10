@@ -26,6 +26,6 @@ Dans Roblox Studio, V5 fonctionne aussi comme `LocalScript` dans `StarterPlayer 
 ### Tests
 
 `doors/tests/run_tests.sh [chemin/vers/luau]` execute V5 dans un environnement Roblox simule
-(`doors/tests/roblox_mock.luau`) et verifie 72 comportements : navigation, chaque interrupteur, restauration
-de l'eclairage, retrait des marqueurs detruits, scenario crucifix, journal, re-execution et fermeture.
+(`doors/tests/roblox_mock.luau`) et verifie 79 comportements : navigation, chaque interrupteur, restauration
+de l'eclairage, retrait des marqueurs detruits, scenario crucifix, protections anti-A90 / Halt / Screech, journal, re-execution et fermeture.
 Le simulateur ne fait aucun rendu : l'affichage reel et les noms d'objets de DOORS restent a verifier en jeu.

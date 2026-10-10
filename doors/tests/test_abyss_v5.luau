@@ -257,6 +257,43 @@ for _, d in ipairs(find("Page_Entites"):GetDescendants()) do
 end
 check("Entite detruite : retiree de la liste", not rowStill)
 
+--================ 7b. PROTECTIONS ================--
+local mainUI = new("ScreenGui", { Name = "MainUI" })
+mainUI.Parent = LP.PlayerGui
+local a90off = new("Frame", { Name = "A90" })
+a90off.Parent = mainUI
+Mock.run(0.3)
+check("Anti-A90 inactif : objet conserve", a90off.Parent == mainUI)
+check("A-90 signale dans le journal", consoleHas("Entite detectee : A-90"))
+click("Toggle_AntiA90")
+Mock.run(0.3)
+check("Anti-A90 active : objet deja present supprime", a90off.Parent == nil)
+local a90 = new("Frame", { Name = "A90" })
+a90.Parent = mainUI
+Mock.run(0.3)
+check("Anti-A90 : nouvel objet supprime", a90.Parent == nil)
+click("Toggle_AntiA90")
+
+local shade = new("Model", { Name = "Shade" })
+click("Toggle_AntiHalt")
+shade.Parent = Mock.Camera
+Mock.run(0.3)
+check("Anti-Halt : Shade supprime de la camera", shade.Parent == nil)
+click("Toggle_AntiHalt")
+local shade2 = new("Model", { Name = "Shade" })
+shade2.Parent = Mock.Camera
+Mock.run(0.3)
+check("Anti-Halt inactif : Shade conserve", shade2.Parent == Mock.Camera)
+shade2:Destroy()
+
+click("Toggle_AntiScreech")
+local screech = new("Model", { Name = "Screech" })
+screech.Parent = Mock.Camera
+Mock.run(0.3)
+check("Anti-Screech : Screech supprime", screech.Parent == nil)
+click("Toggle_AntiScreech")
+mainUI:Destroy()
+
 --================ 8. CRUCIFIX ================--
 local mark = #Mock.console
 click("Btn_CrossScenario")
