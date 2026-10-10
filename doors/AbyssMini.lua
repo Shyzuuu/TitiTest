@@ -293,11 +293,11 @@ local function esp(o, cat, text, partName, n)
   local col = Pal[Cfg["C_" .. cat]][2]
   local h = new("Highlight", { Adornee = o, FillColor = col, OutlineColor = col, FillTransparency = 0.7,
     DepthMode = Enum.HighlightDepthMode.AlwaysOnTop, Enabled = false }, o)
-  local b = new("BillboardGui", { Adornee = part, Size = UDim2.new(0, 160, 0, 34), StudsOffset = Vector3.new(0, 2.5, 0),
+  local b = new("BillboardGui", { Adornee = part, Size = UDim2.new(0, 170, 0, 48), StudsOffset = Vector3.new(0, 2.5, 0),
     AlwaysOnTop = true, Enabled = false }, part)
   local t = new("TextLabel", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Font = Enum.Font.GothamBold,
     TextSize = 13, TextColor3 = col, TextStrokeTransparency = 0.3, Text = text }, b)
-  ESP[o] = { h = h, b = b, t = t, cat = cat, label = text, part = part, col = col, dist = 0 }
+  ESP[o] = { h = h, b = b, t = t, cat = cat, label = text, part = part, col = col, dist = 0, hum = o:FindFirstChildOfClass("Humanoid") }
 end
 loop(0.25, function()
   local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -316,7 +316,9 @@ loop(0.25, function()
           e.h.FillColor, e.h.OutlineColor, e.t.TextColor3 = col, col, col
         end
         local m = "[" .. math.floor(e.dist) .. "m]"
-        e.t.Text = (Cfg.Names and Cfg.Dist) and (e.label .. "\n" .. m) or (Cfg.Names and e.label or m)
+        local lb = e.label
+        if e.hum then lb = lb .. "\n" .. math.floor(e.hum.Health) .. "/" .. math.floor(e.hum.MaxHealth) .. " PV" end
+        e.t.Text = (Cfg.Names and Cfg.Dist) and (lb .. "\n" .. m) or (Cfg.Names and lb or m)
         e.s = Prio[e.cat] * 100000 + e.dist
         table.insert(list, e)
       else
@@ -416,7 +418,7 @@ local function hookPlayer(p)
   if p == LP then return end
   local function f(ch)
     local r = ch:WaitForChild("HumanoidRootPart", 10)
-    if r and Alive then esp(ch, "Players", p.DisplayName, "HumanoidRootPart") end
+    if r and Alive then esp(ch, "Players", p.DisplayName .. " (@" .. p.Name .. ")", "HumanoidRootPart") end
   end
   on(p.CharacterAdded, f)
   if p.Character then task.spawn(f, p.Character) end

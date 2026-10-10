@@ -71,6 +71,14 @@ local hl = door:FindFirstChildWhichIsA("Highlight")
 check("ESP porte visible", hl ~= nil and hl.Enabled == true)
 check("Libelle 'Porte 13'", string.find(door.Door:FindFirstChildWhichIsA("BillboardGui"):FindFirstChildWhichIsA("TextLabel").Text, "Porte 13", 1, true) ~= nil)
 
+click("Joueurs")
+Mock.Other.Character.Humanoid.Health = 62
+Mock.run(0.5)
+local pbb = Mock.Other.Character.HumanoidRootPart:FindFirstChildWhichIsA("BillboardGui")
+local ptxt = pbb and pbb:FindFirstChildWhichIsA("TextLabel").Text or ""
+check("ESP joueur : pseudo, @nom, vie et distance", string.find(ptxt, "Friend (@Friend)", 1, true) and string.find(ptxt, "62/100 PV", 1, true)
+    and string.find(ptxt, "m]", 1, true), ptxt)
+
 click("Fullbright")
 click("Sans brouillard")
 Mock.run(0.3)
