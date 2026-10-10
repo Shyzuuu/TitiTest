@@ -1,8 +1,7 @@
 --!nocheck
--- Tests d'Abyss Extra (avec Abyss Paint charge dans le meme executeur). Lancer via doors/tests/run_tests.sh
+-- Tests des floors et protections fusionnes dans Abyss Paint. Lancer via doors/tests/run_tests.sh
 local Mock = require("./roblox_mock")
 local paint = require("./_paint_src")
-local extra = require("./_extra_src")
 
 local results, failures = {}, 0
 local function check(name, cond, detail)
@@ -38,14 +37,14 @@ mg.Parent = init
 init.Parent = mui
 mui.Parent = LP.PlayerGui
 
-local env = Mock.env()
-Mock.exec(paint, "AbyssPaint", env)
-Mock.run(0.5)
-Mock.exec(extra, "AbyssExtra", env)
+Mock.exec(paint, "AbyssPaint", (Mock.env()))
 Mock.run(1.5)
-check("Paint + Extra charges sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
-local gui = LP.PlayerGui:FindFirstChild("AbyssExtra")
-check("Interface Extra creee, bandeau retire", gui ~= nil and LP.PlayerGui:FindFirstChild("AbyssExtraBoot") == nil)
+check("Script unique charge sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
+local gui = LP.PlayerGui:FindFirstChild("AbyssPaint")
+check("Interface creee, bandeau retire", gui ~= nil and LP.PlayerGui:FindFirstChild("AbyssBoot") == nil)
+local tabs = 0
+for _, d in ipairs(gui:GetDescendants()) do if d.ClassName == "ScrollingFrame" then tabs = tabs + 1 end end
+check("8 onglets + barre laterale defilante", tabs == 9, tostring(tabs))
 
 local function texts()
     local out = {}
@@ -72,14 +71,14 @@ local function tag(part)
 end
 
 check("Floor detecte : Mines", string.find(texts(), "Floor detecte : Mines", 1, true) ~= nil, texts())
-check("Barre d'etat : ESP floor relie", string.find(texts(), "relie", 1, true) ~= nil, texts())
+check("Barre d'etat : floor affiche", string.find(texts(), "| Mines", 1, true) ~= nil, texts())
 Mock.run(0.6)
 local on1, t1 = tag(anchor.Base)
 check("ESP floor Mines actif d'office : Ancre", on1 and string.find(t1, "Ancre", 1, true) ~= nil, t1)
-click("ESP Mines")
+click("ESP floor Mines")
 Mock.run(0.4)
 check("ESP floor Mines desactivable", not tag(anchor.Base))
-click("ESP Mines")
+click("ESP floor Mines")
 
 -- Balayage : chaque bouton deux fois sans erreur
 local all = {}
@@ -87,7 +86,7 @@ for _, d in ipairs(gui:GetDescendants()) do
     if d.ClassName == "TextButton" and d.Text ~= "X" and not string.find(d.Text, "Fermer", 1, true) then table.insert(all, d) end
 end
 for _, b in ipairs(all) do b.MouseButton1Click:Fire() Mock.run(0.05) b.MouseButton1Click:Fire() Mock.run(0.05) end
-Mock.run(1.2)
+Mock.run(11)
 check(#all .. " boutons cliques deux fois sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
 
 -- Modules renommes puis restaures
@@ -157,12 +156,19 @@ click("Code bibliotheque")
 Mock.run(1.2)
 check("Code bibliotheque resolu : 41709", string.find(texts(), "41709", 1, true) ~= nil, texts())
 
--- Fermeture : tout restaure, Paint intact
-click("Fermer Abyss Extra")
+-- FOV retabli
+click("     FOV")
+Mock.run(0.1)
+Mock.RunService.RenderStepped:Fire(0.016)
+check("FOV applique", Mock.Camera.FieldOfView == 90, tostring(Mock.Camera.FieldOfView))
+
+-- Fermeture : tout restaure
+check("Sans jumpscares actif avant fermeture", mods:FindFirstChild("SpiderJumpscare_Disabled") ~= nil)
+click("Fermer le script")
 Mock.run(0.5)
-check("Fermeture : interface Extra supprimee", LP.PlayerGui:FindFirstChild("AbyssExtra") == nil)
-check("Fermeture : modules restaures", mods:FindFirstChild("SpiderJumpscare") ~= nil)
-check("Abyss Paint toujours actif", LP.PlayerGui:FindFirstChild("AbyssPaint") ~= nil)
+check("Fermeture : interface supprimee", LP.PlayerGui:FindFirstChild("AbyssPaint") == nil)
+check("Fermeture : modules restaures", mods:FindFirstChild("SpiderJumpscare") ~= nil and mods:FindFirstChild("Screech") ~= nil)
+check("Fermeture : FOV restaure", Mock.Camera.FieldOfView == 70)
 check("Aucune erreur sur tout le parcours", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
 
 for _, r in ipairs(results) do

@@ -1,4 +1,4 @@
--- ABYSS EXTRA // complement d'Abyss Paint (floors + protections Abysall). ASCII < 32 Ko
+return [=[-- ABYSS EXTRA // complement d'Abyss Paint (floors + protections Abysall). ASCII < 32 Ko
 local Players = game:GetService("Players")
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -613,3 +613,4 @@ else
 	BootTxt.Text = "ABYSS EXTRA ERREUR (envoie ce texte) :\n" .. tostring(err)
 	warn("[AbyssExtra] " .. tostring(err))
 end
+]=]

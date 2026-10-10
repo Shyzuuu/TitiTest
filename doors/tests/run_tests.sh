@@ -5,7 +5,7 @@ cd "$(dirname "$0")/../.."
 LUAU="${1:-luau}"
 # Le CLI Luau n'a pas de bibliotheque io : chaque script est embarque dans un module qui renvoie son source
 python3 - <<'PY'
-for src_path, mod in (("doors/AbyssV5.lua", "_abyss_src"), ("doors/AbyssMini.lua", "_mini_src"), ("doors/AbyssPaint.lua", "_paint_src"), ("doors/AbyssExtra.lua", "_extra_src")):
+for src_path, mod in (("doors/AbyssV5.lua", "_abyss_src"), ("doors/AbyssMini.lua", "_mini_src"), ("doors/AbyssPaint.lua", "_paint_src")):
     src = open(src_path, encoding="utf-8").read()
     level = 0
     while ("]" + "=" * level + "]") in src:
@@ -19,5 +19,5 @@ echo "=== AbyssMini ==="
 "$LUAU" doors/tests/test_abyss_mini.luau
 echo "=== AbyssPaint ==="
 "$LUAU" doors/tests/test_abyss_paint.luau
-echo "=== AbyssExtra ==="
-"$LUAU" doors/tests/test_abyss_extra.luau
+echo "=== AbyssPaint (floors + protections) ==="
+"$LUAU" doors/tests/test_abyss_fusion.luau
