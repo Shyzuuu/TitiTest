@@ -44,7 +44,7 @@ local gui = LP.PlayerGui:FindFirstChild("AbyssPaint")
 check("Interface creee, bandeau retire", gui ~= nil and LP.PlayerGui:FindFirstChild("AbyssBoot") == nil)
 local tabs = 0
 for _, d in ipairs(gui:GetDescendants()) do if d.ClassName == "ScrollingFrame" then tabs = tabs + 1 end end
-check("8 onglets + barre laterale defilante", tabs == 9, tostring(tabs))
+check("9 onglets + barre laterale defilante", tabs == 10, tostring(tabs))
 
 local function texts()
     local out = {}
@@ -155,6 +155,83 @@ perm.Parent = LP.PlayerGui
 click("Code bibliotheque")
 Mock.run(1.2)
 check("Code bibliotheque resolu : 41709", string.find(texts(), "41709", 1, true) ~= nil, texts())
+
+-- Auto-interaction : tiroir ouvert puis or ramasse, a la portee normale uniquement
+local drawer = new("Model", { Name = "DrawerContainer" })
+local knob = new("Part", { Name = "Knobs", CFrame = Mock.CF(2, 2, -4) })
+knob.Parent = drawer
+local dprompt = new("ProximityPrompt", { Name = "ActivateEventPrompt", ActionText = "Open" })
+dprompt.Parent = knob
+drawer.Parent = room
+local far = new("Model", { Name = "DrawerContainer" })
+local farKnob = new("Part", { Name = "Knobs", CFrame = Mock.CF(0, 2, -60) })
+farKnob.Parent = far
+local fprompt = new("ProximityPrompt", { Name = "ActivateEventPrompt", ActionText = "Open" })
+fprompt.Parent = farKnob
+far.Parent = room
+local gold = new("Model", { Name = "GoldPile" })
+local coin = new("Part", { Name = "Hitbox", CFrame = Mock.CF(1, 1, -3) })
+coin.Parent = gold
+local gprompt = new("ProximityPrompt", { Name = "LootPrompt" })
+gprompt.Parent = coin
+gold.Parent = drawer
+local wardrobe = new("Model", { Name = "Wardrobe" })
+local wpart = new("Part", { Name = "Main", CFrame = Mock.CF(0, 2, -2) })
+wpart.Parent = wardrobe
+local hprompt = new("ProximityPrompt", { Name = "HidePrompt" })
+hprompt.Parent = wpart
+wardrobe.Parent = room
+local fakeD = new("Model", { Name = "DoorFake" })
+new("Part", { Name = "Hidden", CFrame = Mock.CF(0, 3, -5) }).Parent = fakeD
+local fdp = new("Part", { Name = "Lock", CFrame = Mock.CF(0, 3, -5) })
+fdp.Parent = fakeD
+local dupePrompt = new("ProximityPrompt", { Name = "UnlockPrompt" })
+dupePrompt.Parent = fdp
+fakeD.Parent = room
+Mock.run(0.3)
+click("Auto-interaction (tiroirs")
+Mock.run(1)
+check("Auto : tiroir proche ouvert", (Mock.fired[dprompt] or 0) >= 1)
+check("Auto : or du tiroir ramasse", (Mock.fired[gprompt] or 0) >= 1)
+check("Auto : tiroir hors portee ignore", Mock.fired[fprompt] == nil)
+check("Auto : cachette jamais declenchee", Mock.fired[hprompt] == nil)
+check("Auto : fausse porte (Dupe) jamais declenchee", Mock.fired[dupePrompt] == nil)
+click("Auto-interaction (tiroirs")
+
+-- Dupe : une vraie porte nommee FakeDoor sans piece Hidden n'est pas marquee DUPE
+local notDupe = new("Model", { Name = "FakeDoor" })
+local nd = new("Part", { Name = "Frame", CFrame = Mock.CF(4, 3, -6) })
+nd.Parent = notDupe
+notDupe.Parent = room
+Mock.run(0.6)
+check("Pas de faux DUPE sans piece Hidden", not tag(nd))
+local late = new("Model", { Name = "DoorFake" })
+local lp = new("Part", { Name = "Body", CFrame = Mock.CF(-4, 3, -6) })
+lp.Parent = late
+late.Parent = room
+Mock.run(0.3)
+new("Part", { Name = "Hidden", CFrame = Mock.CF(-4, 3, -6) }).Parent = late
+Mock.run(0.6)
+local lon, ltxt = tag(lp)
+check("Vraie Dupe detectee meme si Hidden arrive en retard", lon and string.find(ltxt, "DUPE", 1, true) ~= nil, ltxt)
+
+-- Rush : bandeau rouge en haut de l'ecran
+local rush = new("Model", { Name = "RushMoving" })
+new("Part", { Name = "RushNew", CFrame = Mock.CF(0, 3, -40) }).Parent = rush
+rush.Parent = W
+Mock.run(0.3)
+local bannerOn = false
+for _, d in ipairs(gui:GetDescendants()) do
+    if d.ClassName == "TextLabel" and d.Visible and string.find(d.Text, "!! RUSH !!", 1, true) then bannerOn = true end
+end
+check("Bandeau rouge RUSH affiche", bannerOn, texts())
+Mock.run(7)
+local bannerOff = true
+for _, d in ipairs(gui:GetDescendants()) do
+    if d.ClassName == "TextLabel" and d.Visible and string.find(d.Text, "!! RUSH !!", 1, true) then bannerOff = false end
+end
+check("Bandeau RUSH retire apres le passage", bannerOff)
+rush:Destroy()
 
 -- FOV retabli
 click("     FOV")

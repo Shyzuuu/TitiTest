@@ -73,7 +73,7 @@ local Cfg = {
 	AntiEggs = false, AntiBanana = false, AntiLava = false, AntiWall = false, AntiSeek = false, AntiJeff = false,
 	AntiVacuum = false, AntiAlma = false, AntiRansom = false, AntiTrash = false, Oxygen = false, Haste = false,
 	LibCode = false, InstantPrompt = false, Jump = false, NoShake = false, HideSeeThrough = false, NoVignette = false,
-	CrossAny = true, CrossRange = 80,
+	CrossAny = true, CrossRange = 80, AutoLoot = false, LootItems = true, RushBanner = true,
 }
 for _, c in ipairs(Cats) do
 	CatInfo[c[1]] = c
@@ -103,28 +103,45 @@ local function notify(title, text, color)
 	task.delay(4, function() f:Destroy() end)
 end
 
-local Main = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0),
-	Size = U2(0, 470, 0, 300), BackgroundColor3 = GREY, Active = true }, Gui)
+-- Wrap porte la fenetre et son ombre portee : on deplace / masque le tout d'un bloc
+local Wrap = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0), Size = U2(0, 478, 0, 338),
+	BackgroundTransparency = 1 }, Gui)
+new("Frame", { Size = U2(0, 470, 0, 330), Position = U2(0, 8, 0, 8), BackgroundColor3 = BLACK, BackgroundTransparency = 0.55,
+	BorderSizePixel = 0 }, Wrap)
+local Main = new("Frame", { Size = U2(0, 470, 0, 330), BackgroundColor3 = GREY, Active = true }, Wrap)
 border(Main, 3)
+-- relief Windows 95 : liseres clair en haut/gauche
+new("Frame", { Size = U2(1, 0, 0, 2), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, Main)
+new("Frame", { Size = U2(0, 2, 1, 0), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, Main)
 local cam0 = workspace.CurrentCamera
 if cam0 then
-	new("UIScale", { Scale = math.clamp(math.min(cam0.ViewportSize.X / 660, cam0.ViewportSize.Y / 370), 0.6, 1.3) }, Main)
+	new("UIScale", { Scale = math.clamp(math.min(cam0.ViewportSize.X / 660, cam0.ViewportSize.Y / 400), 0.6, 1.3) }, Wrap)
 end
-local Title = new("TextLabel", { Size = U2(1, -8, 0, 24), Position = U2(0, 4, 0, 4), BackgroundColor3 = NAVY,
-	BorderSizePixel = 0, Font = ARC, TextSize = 16, TextColor3 = WHITE, Text = " ABYSS PAINT.EXE",
+local Title = new("TextLabel", { Size = U2(1, -8, 0, 24), Position = U2(0, 4, 0, 4), BackgroundColor3 = WHITE,
+	BorderSizePixel = 0, Font = ARC, TextSize = 16, TextColor3 = WHITE, Text = "  ABYSS PAINT.EXE  -  DOORS",
 	TextXAlignment = Enum.TextXAlignment.Left, Active = true }, Main)
+local TitleGrad = new("UIGradient", { Color = ColorSequence.new(NAVY, RGB(16, 132, 208)) }, Title)
 local function winBtn(txt, x)
 	local b = new("TextButton", { Size = U2(0, 20, 0, 18), Position = U2(1, x, 0, 3), BackgroundColor3 = GREY,
 	BorderSizePixel = 0, TextSize = 14, Text = txt }, Title)
 	border(b, 2)
 	return b
 end
-local CloseB = winBtn("X", -24)
+local MinB, CloseB = winBtn("_", -46), winBtn("X", -24)
 local Status = new("TextLabel", { Size = U2(1, -8, 0, 18), Position = U2(0, 4, 1, -22), BackgroundColor3 = GREY,
 	TextSize = 12, Text = " Pret", TextXAlignment = Enum.TextXAlignment.Left }, Main)
 border(Status, 1)
 
-local Tools = new("ScrollingFrame", { Size = U2(0, 104, 1, -60), Position = U2(0, 4, 0, 32), BackgroundTransparency = 1,
+-- Palette MS Paint : touche une couleur pour changer la teinte du titre
+local Pal = new("Frame", { Size = U2(1, -8, 0, 20), Position = U2(0, 4, 1, -46), BackgroundTransparency = 1 }, Main)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 3) }, Pal)
+for _, c in ipairs({ BLACK, DARK, RGB(128, 0, 0), RGB(128, 128, 0), RGB(0, 128, 0), RGB(0, 128, 128), NAVY, RGB(128, 0, 128),
+	WHITE, GREY, RED, RGB(255, 255, 0), GREEN, CYAN, RGB(0, 0, 255), RGB(255, 0, 255) }) do
+	local sw = new("TextButton", { Size = U2(0, 18, 0, 18), BackgroundColor3 = c, Text = "", AutoButtonColor = false }, Pal)
+	border(sw, 1)
+	sw.MouseButton1Click:Connect(function() TitleGrad.Color = ColorSequence.new(NAVY, c) end)
+end
+local Tools = new("ScrollingFrame", { Size = U2(0, 104, 1, -84), Position = U2(0, 4, 0, 32), BackgroundTransparency = 1,
 	BorderSizePixel = 0, ScrollBarThickness = 4, ScrollBarImageColor3 = BLACK, CanvasSize = U2(), AutomaticCanvasSize = Enum.AutomaticSize.Y }, Main)
 new("UIListLayout", { Padding = UDim.new(0, 4) }, Tools)
 local Pages, Tabs = {}, {}
@@ -140,7 +157,7 @@ local function page(name)
 	local b = new("TextButton", { Size = U2(1, -6, 0, 30), BackgroundColor3 = GREY, 
 	Text = name, LayoutOrder = i, AutoButtonColor = false }, Tools)
 	border(b, 2)
-	local p = new("ScrollingFrame", { Size = U2(1, -122, 1, -64), Position = U2(0, 114, 0, 34),
+	local p = new("ScrollingFrame", { Size = U2(1, -122, 1, -88), Position = U2(0, 114, 0, 34),
 	BackgroundColor3 = WHITE, ScrollBarThickness = 6, ScrollBarImageColor3 = BLACK, CanvasSize = U2(),
 	AutomaticCanvasSize = Enum.AutomaticSize.Y, Visible = false, BorderSizePixel = 0 }, Main)
 	border(p, 2)
@@ -157,6 +174,12 @@ local function label(p, text)
 	return new("TextLabel", { Size = U2(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1,
 	TextSize = 12, TextWrapped = true, TextColor3 = DARK, Text = text,
 	TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = nextOrder() }, p)
+end
+local function section(p, text)
+	local f = new("TextLabel", { Size = U2(1, 0, 0, 20), BackgroundColor3 = NAVY, BorderSizePixel = 0, TextColor3 = WHITE,
+	TextSize = 12, Text = " " .. text, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = nextOrder() }, p)
+	new("UIGradient", { Color = ColorSequence.new(NAVY, RGB(16, 132, 208)) }, f)
+	return f
 end
 local Render, Apply = {}, {}
 local function set(key, v)
@@ -175,7 +198,10 @@ local function toggle(p, text, key, color)
 	Font = ARC, TextSize = 16, TextColor3 = RED, Text = "" }, b)
 	border(box, 2)
 	if color then new("Frame", { Size = U2(0, 14, 0, 14), Position = U2(1, -20, 0.5, -7), BackgroundColor3 = color, BorderSizePixel = 0 }, b) end
-	local function r() box.Text = Cfg[key] and "X" or "" end
+	local function r()
+		box.Text = Cfg[key] and "X" or ""
+		b.BackgroundColor3 = Cfg[key] and RGB(214, 236, 214) or GREY
+	end
 	Render[key] = Render[key] or {}
 	table.insert(Render[key], r)
 	b.MouseButton1Click:Connect(function() set(key, not Cfg[key]) end)
@@ -216,25 +242,50 @@ do -- drag tactile
 	local drag, inp, st, sp
 	Title.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then
-			drag, inp, st, sp = true, i, i.Position, Main.Position
+			drag, inp, st, sp = true, i, i.Position, Wrap.Position
 		end
 	end)
 	on(UIS.InputChanged, function(i)
 		if drag and (i == inp or i.UserInputType == Enum.UserInputType.MouseMovement) then
 			local d = i.Position - st
-			Main.Position = U2(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
+			Wrap.Position = U2(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
 		end
 	end)
 	on(UIS.InputEnded, function(i)
 		if i == inp or i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
 	end)
 end
-local Float = new("TextButton", { Size = U2(0, 52, 0, 52), Position = U2(0, 10, 0.4, 0), BackgroundColor3 = WHITE,
-	Font = ARC, TextColor3 = RED, Text = "PAINT", AutoButtonColor = false }, Gui)
+local Float = new("TextButton", { Size = U2(0, 56, 0, 56), Position = U2(0, 10, 0.4, 0), BackgroundColor3 = WHITE,
+	Font = ARC, TextColor3 = NAVY, TextSize = 14, Text = "PAINT", AutoButtonColor = false }, Gui)
 border(Float, 3)
-Float.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+for i, c in ipairs({ RED, RGB(255, 200, 0), GREEN, RGB(0, 128, 255) }) do
+	new("Frame", { Size = U2(0, 10, 0, 6), Position = U2(0, 3 + (i - 1) * 13, 1, -10), BackgroundColor3 = c, BorderSizePixel = 0 }, Float)
+end
+do -- bouton flottant deplacable au doigt ; un simple appui ouvre/ferme
+	local fd, fi, fs, fp, moved
+	Float.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then
+			fd, fi, fs, fp, moved = true, i, i.Position, Float.Position, false
+		end
+	end)
+	on(UIS.InputChanged, function(i)
+		if fd and (i == fi or i.UserInputType == Enum.UserInputType.MouseMovement) then
+			local d = i.Position - fs
+			if math.abs(d.X) + math.abs(d.Y) > 8 then moved = true end
+			if moved then Float.Position = U2(fp.X.Scale, fp.X.Offset + d.X, fp.Y.Scale, fp.Y.Offset + d.Y) end
+		end
+	end)
+	on(UIS.InputEnded, function(i)
+		if i == fi or i.UserInputType == Enum.UserInputType.MouseButton1 then fd = false end
+	end)
+	Float.MouseButton1Click:Connect(function()
+		if not moved then Wrap.Visible = not Wrap.Visible end
+		moved = false
+	end)
+end
+MinB.MouseButton1Click:Connect(function() Wrap.Visible = false end)
 
-local Track, Pending = {}, {}
+local Track, Pending = {}, setmetatable({}, { __mode = "k" })
 local function isDoors() return workspace:FindFirstChild("CurrentRooms") ~= nil end
 local function getPart(o)
 	if o:IsA("BasePart") then return o end
@@ -353,6 +404,7 @@ end
 local HIDE = { Wardrobe = 1, Backdoor_Wardrobe = 1, RetroWardrobe = 1, Toolshed = 1, Bed = 1, Double_Bed = 1, Rooms_Locker = 1,
 	Rooms_Locker_Fridge = 1, Locker_Large = 1, CircularVent = 1, Dumpster = 1 }
 local RUN = { RUSH = 1, AMBUSH = 1, BLITZ = 1, ["A-60"] = 1, ["A-120"] = 1 }
+local banner
 local function nearestHide()
 	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 	local rooms = workspace:FindFirstChild("CurrentRooms")
@@ -370,6 +422,30 @@ local function nearestHide()
 	return best
 end
 
+-- Bandeau rouge clignotant en haut de l'ecran pendant le passage d'une entite qui chasse
+local Banner = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position = U2(0.5, 0, 0, 60), Size = U2(0, 420, 0, 54),
+	BackgroundColor3 = RGB(170, 0, 0), BackgroundTransparency = 0.1, Font = ARC, TextSize = 22, TextColor3 = WHITE,
+	TextStrokeTransparency = 0, TextWrapped = true, Text = "", Visible = false }, Gui)
+border(Banner, 3)
+local Flash = new("Frame", { Size = U2(1, 0, 1, 0), BackgroundColor3 = RED, BackgroundTransparency = 1, BorderSizePixel = 0,
+	Active = false, ZIndex = 0 }, Gui)
+local bannerId = 0
+banner = function(n, tip)
+	bannerId = bannerId + 1
+	local id = bannerId
+	Banner.Text = "!! " .. n .. " !!\n" .. tip
+	Banner.Visible = true
+	task.spawn(function()
+		for k = 1, 16 do
+			if not Alive or id ~= bannerId then return end
+			Banner.BackgroundColor3 = (k % 2 == 0) and RGB(170, 0, 0) or RED
+			Flash.BackgroundTransparency = (k <= 4 and k % 2 == 1) and 0.75 or 1
+			task.wait(0.35)
+		end
+		if id == bannerId then Banner.Visible = false Flash.BackgroundTransparency = 1 end
+	end)
+end
+
 local H = "Cache-toi !"
 local Tips = { RUSH = H, AMBUSH = H, EYES = "Ne regarde pas !", SEEK = "Cours !", BLITZ = H, ["A-60"] = H, ["A-120"] = H, ["A-90"] = "Ne bouge plus !",
 	SCREECH = "Regarde-le !", HALT = "Demi-tour au bleu." }
@@ -383,10 +459,16 @@ local function alert(n)
 		tip = tip .. (m and (" Cachette a " .. math.floor(m) .. " m") or " Aucune cachette proche")
 	end
 	notify("! " .. n, tip, RED)
+	if RUN[n] and Cfg.RushBanner and banner then banner(n, tip) end
 end
 
+local DUPE = { FakeDoor = true, DoorFake = true }
+local function isDupe(o) return o:IsA("Model") and o:FindFirstChild("Hidden") ~= nil end
 local function process(i)
 	if not Alive or not i.Parent then return end
+	-- la piece Hidden arrive parfois apres le modele (streaming) : on re-teste le parent
+	if i.Name == "Hidden" and i.Parent and DUPE[i.Parent.Name] then return process(i.Parent) end
+	if DUPE[i.Name] and not isDupe(i) then return end
 	if i:IsA("Humanoid") then
 		local m = i.Parent
 		if m and m:IsA("Model") and not Players:GetPlayerFromCharacter(m) then track(m, "Monsters", m.Name) end
@@ -430,7 +512,7 @@ end
 for _, p in ipairs(Players:GetPlayers()) do hookPlayer(p) end
 on(Players.PlayerAdded, hookPlayer)
 
-local MAX = 40
+local MAX, curFloor = 40, nil
 loop(0.2, function()
 	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 	local list, total, doors = {}, 0, isDoors()
@@ -474,7 +556,7 @@ loop(0.2, function()
 		if not e.on and e.hl and e.hl.Enabled then e.hl.Enabled = false end
 	end
 	Status.Text = " ESP " .. (Cfg.Esp and "ON" or "OFF") .. " | cibles " .. total .. " | dessinees " .. #list .. " | salle " .. (cur or "?")
-		.. " | " .. (floorOf(rawFloor()) or rawFloor() or "?")
+		.. " | " .. (curFloor or "?")
 end)
 
 table.insert(Cleanups, function() for o in pairs(Track) do untrack(o) end end)
@@ -661,7 +743,7 @@ local Haz = setmetatable({}, { __mode = "k" })
 local touchOld = setmetatable({}, { __mode = "k" })
 local function hazard(o)
 	local key = HAZ[o.Name]
-	if not key or not o.Parent then return end
+	if not key or not o.Parent or (DUPE[o.Name] and not isDupe(o)) then return end
 	local act = Cfg[key] and Alive
 	for _, p in ipairs(o:IsA("BasePart") and { o } or o:GetDescendants()) do
 		if p:IsA("BasePart") then
@@ -693,6 +775,7 @@ Apply.AntiAlma, Apply.AntiRansom, Apply.AntiTrash = killAll, killAll, killAll
 on(workspace.ChildAdded, killCheck)
 on(workspace.DescendantAdded, function(d)
 	if HAZ[d.Name] then task.defer(hazard, d) end
+	if d.Name == "Hidden" and d.Parent and DUPE[d.Parent.Name] then task.defer(hazard, d.Parent) end
 	if d:IsA("BasePart") and d.Parent and HAZ[d.Parent.Name] then task.defer(hazard, d.Parent) end
 	if Cfg.InstantPrompt and d:IsA("ProximityPrompt") then d.HoldDuration = 0 end
 end)
@@ -700,6 +783,85 @@ task.spawn(function()
 	for n, d in ipairs(workspace:GetDescendants()) do
 		if HAZ[d.Name] then hazard(d) end
 		if n % 500 == 0 then task.wait() end
+	end
+end)
+
+-- ===== Auto-interaction : tiroirs, coffres, or et objets, a la portee normale du prompt =====
+local CONTAINER = { DrawerContainer = 1, ChestBox = 1, Toolbox = 1, Locker_Small = 1, GoldPile = 1, StardustPickup = 1 }
+local PICKUP = { KeyObtain = "Key", ElectricalKeyObtain = "KeyElectrical", LiveHintBook = 1, LiveBreakerPolePickup = 1, FuseObtain = 1,
+	LibraryHintPaper = "LibraryHintPaper", LibraryHintPaperHard = "LibraryHintPaper" }
+local Prompts = setmetatable({}, { __mode = "k" })
+local fired = setmetatable({}, { __mode = "k" })
+local function hasItem(n)
+	local bp = LP:FindFirstChildOfClass("Backpack")
+	return (LP.Character and LP.Character:FindFirstChild(n)) or (bp and bp:FindFirstChild(n))
+end
+local function promptPos(pr)
+	local a = pr.Parent
+	if not a then return nil end
+	if a:IsA("Attachment") then return a.WorldPosition end
+	if a:IsA("BasePart") then return a.Position end
+	if a:IsA("Model") then
+		local okP, cf = pcall(a.GetPivot, a)
+		return okP and cf.Position or nil
+	end
+	return nil
+end
+-- Decide si un prompt est du butin : on remonte jusqu'a 4 parents pour trouver le tiroir / l'objet
+local function lootTarget(pr)
+	if not pr.Enabled or pr.ActionText == "Close" or pr.ActionText == "Fermer" then return false end
+	local o = pr.Parent
+	for _ = 1, 4 do
+		if not o or o == workspace then return false end
+		if DUPE[o.Name] or HIDE[o.Name] or o:GetAttribute("Locked") == true then return false end
+		if CONTAINER[o.Name] then return true end
+		local need = PICKUP[o.Name]
+		if need then return Cfg.LootItems and (need == 1 or not hasItem(need)) end
+		local d = Names[o.Name]
+		if d and d[1] == "Items" and Cfg.LootItems then
+			if o.Name == "Bandage" then
+				local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+				return hum ~= nil and hum.Health < hum.MaxHealth
+			end
+			return true
+		end
+		o = o.Parent
+	end
+	return false
+end
+local function firePrompt(pr)
+	if fireproximityprompt then
+		fireproximityprompt(pr)
+	else
+		pr:InputHoldBegin()
+		task.wait(pr.HoldDuration + 0.05)
+		pr:InputHoldEnd()
+	end
+end
+on(workspace.DescendantAdded, function(d) if d:IsA("ProximityPrompt") then Prompts[d] = true end end)
+task.spawn(function()
+	for n, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("ProximityPrompt") then Prompts[d] = true end
+		if n % 600 == 0 then task.wait() end
+	end
+end)
+loop(0.15, function()
+	if not Cfg.AutoLoot then return end
+	local ch = LP.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart")
+	if not root or ch:GetAttribute("Hiding") then return end
+	local now = os.clock()
+	for pr in pairs(Prompts) do
+		if not pr.Parent then
+			Prompts[pr] = nil
+		elseif not fired[pr] or now - fired[pr] > 0.8 then
+			local pos = promptPos(pr)
+			-- portee du jeu (MaxActivationDistance) respectee : aucune extension de reach
+			if pos and (pos - root.Position).Magnitude <= pr.MaxActivationDistance and lootTarget(pr) then
+				fired[pr] = now
+				task.spawn(firePrompt, pr)
+			end
+		end
 	end
 end)
 
@@ -813,6 +975,7 @@ loop(1, function()
 	seeThrough()
 	-- active une seule fois la categorie ESP du floor detecte
 	local f = floorOf(rawFloor())
+	curFloor = f or rawFloor()
 	if f and floorAuto ~= f then
 		floorAuto = f
 		set("E_F_" .. f, true)
@@ -998,11 +1161,13 @@ end
 table.insert(Cleanups, function() if crossTool then crossTool:Destroy() end end)
 
 local P = page("ESP")
+section(P, "Affichage")
 toggle(P, "ESP actif", "Esp")
 toggle(P, "Etiquettes 3D", "Labels")
 toggle(P, "Chams (contours)", "Chams")
 stepper(P, "Distance max", "MaxDist", 50, 2000, 50)
 toggle(P, "Salle actuelle seulement", "RoomOnly")
+section(P, "Categories")
 for _, c in ipairs(Cats) do toggle(P, c[2], "E_" .. c[1], c[3]) end
 button(P, "Tester l'ESP (cible 10s)", function()
 	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -1016,29 +1181,35 @@ button(P, "Tester l'ESP (cible 10s)", function()
 end)
 label(P, "Joueurs : DOORS seulement.")
 P = page("Monde")
+section(P, "Lumiere")
 toggle(P, "Fullbright", "Fullbright")
 toggle(P, "Sans brouillard", "NoFog")
+section(P, "Mouvement")
 toggle(P, "Speed", "Speed")
 stepper(P, "Bonus vitesse", "SpeedV", 1, 60, 1)
 toggle(P, "Vitesse sure (bonus max +6)", "SafeSpeed")
 label(P, "Bonus sur la vitesse du jeu. > +6 = rollback.")
 toggle(P, "Anti-acceleration (anti-glisse)", "AntiSlide")
+section(P, "Camera")
 toggle(P, "FOV", "Fov")
 stepper(P, "FOV", "FovV", 70, 120, 5)
 P = page("Floors")
+section(P, "Floor")
 floorLabel = label(P, "Floor detecte : ?")
 for _, f in ipairs(FLOORS) do toggle(P, "ESP floor " .. f[1], "E_F_" .. f[1], f[3]) end
 label(P, "La categorie du floor detecte s'active toute seule.")
 P = page("Entites")
+section(P, "Alertes")
 toggle(P, "Alertes (+ cachette proche)", "Alerts")
-label(P, "Supprimer :")
+toggle(P, "Bandeau rouge Rush / A-60...", "RushBanner")
+section(P, "Supprimer")
 toggle(P, "Anti-Screech", "AntiScreech")
 toggle(P, "Anti-A90", "AntiA90")
 toggle(P, "Anti-Halt", "AntiHalt")
 toggle(P, "Anti-Dread", "AntiDread")
 toggle(P, "Anti-Surge", "AntiSurge")
 toggle(P, "Sans jumpscares", "NoJumpscare")
-label(P, "Contact coupe :")
+section(P, "Contact coupe")
 toggle(P, "Anti-Giggle", "AntiGiggle")
 toggle(P, "Anti-Snare", "AntiSnare")
 toggle(P, "Anti-Dupe", "AntiDupe")
@@ -1049,29 +1220,39 @@ toggle(P, "Anti-mur (Seeking Wall)", "AntiWall")
 toggle(P, "Anti-obstacles Seek", "AntiSeek")
 toggle(P, "Anti-Jeff", "AntiJeff")
 toggle(P, "Anti-Vacuum", "AntiVacuum")
-label(P, "Archives :")
+section(P, "Archives")
 toggle(P, "Anti-Alma", "AntiAlma")
 toggle(P, "Anti-Ransom", "AntiRansom")
 toggle(P, "Anti-dechets placard", "AntiTrash")
 label(P, "A-60 / A-120 / Rush : alerte + distance de la cachette la plus proche.")
 protLabel = label(P, "Protections : 0")
+P = page("Auto")
+section(P, "Auto-interaction")
+toggle(P, "Auto-interaction (tiroirs, coffres, or)", "AutoLoot")
+toggle(P, "Ramasser aussi objets et cles", "LootItems")
+label(P, "Approche-toi : tiroirs et coffres s'ouvrent, le contenu est ramasse. Portee normale du jeu, ignore les fausses portes, cachettes et verrous.")
 P = page("Infos")
+section(P, "Infos")
 infoLabel = label(P, "Oxygene : - | Haste : - | Code : -")
 toggle(P, "Notif oxygene", "Oxygen")
 toggle(P, "Notif minuteur Haste", "Haste")
 toggle(P, "Code bibliotheque", "LibCode")
 P = page("Perso")
+section(P, "Personnage")
 toggle(P, "Saut active", "Jump")
 toggle(P, "Prompts instantanes", "InstantPrompt")
 toggle(P, "Sans tremblement camera", "NoShake")
 toggle(P, "Cachette transparente", "HideSeeThrough")
 toggle(P, "Sans vignette cachette", "NoVignette")
 P = page("Crucifix")
+section(P, "Crucifix")
 button(P, "Obtenir le crucifix", giveCross)
 toggle(P, "Viser ce que je touche", "CrossAny")
 stepper(P, "Portee", "CrossRange", 10, 300, 10)
 crossLabel = label(P, "Visuel local.")
 P = page("Script")
+section(P, "Script")
+label(P, "Abyss Paint - DOORS. Bouton PAINT : deplacable, appui = ouvrir / fermer. Palette en bas : couleur du titre.")
 button(P, "Fermer le script", function() G.AbyssStop() end)
 
 local function stop()
