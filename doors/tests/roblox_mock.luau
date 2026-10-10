@@ -141,7 +141,17 @@ function SignalMT:ConnectedCount()
     for _, h in ipairs(self.handlers) do if h.connected then n = n + 1 end end
     return n
 end
-function SignalMT:Wait() return coroutine.yield() end
+-- Wait suspend la coroutine jusqu'au prochain Fire
+function SignalMT:Wait()
+    local co = coroutine.running()
+    local conn
+    conn = self:Connect(function(...)
+        conn.Disconnect()
+        local ok, e = coroutine.resume(co, ...)
+        if not ok then record("Signal:Wait", debug.traceback(co, tostring(e))) end
+    end)
+    return coroutine.yield()
+end
 
 --============================== PLANIFICATEUR ==============================--
 local queue = {}
@@ -427,6 +437,13 @@ function Methods.PivotTo(self, cf)
     end
 end
 function Methods.SetStateEnabled() end
+function Methods.GetExtentsSize(self)
+    local p = Methods.FindFirstChildWhichIsA(self, "BasePart", true)
+    return p and p.Size or V3(1, 1, 1)
+end
+function Methods.Raycast(self, origin, dir)
+    return { Position = V3(origin.X, origin.Y - 3, origin.Z) }
+end
 function Methods.Clone(self)
     local c = new(self.ClassName)
     for k, v in pairs(self.__props) do if k ~= "Parent" then c.__props[k] = v end end
@@ -526,6 +543,12 @@ LP.__custom = { GetMouse = function() return mouse end }
 Mock.mouse = mouse
 
 Players.__custom.LocalPlayer = LP
+Players.__custom.GetPlayerFromCharacter = function(_, char)
+    for _, c in ipairs(Players.__children) do
+        if c.ClassName == "Player" and c.Character == char then return c end
+    end
+    return nil
+end
 Players.__custom.GetPlayers = function()
     local out = {}
     for _, c in ipairs(Players.__children) do if c.ClassName == "Player" then table.insert(out, c) end end
@@ -626,6 +649,7 @@ function Mock.env()
             Mock.fired[p] = (Mock.fired[p] or 0) + 1
         end,
         os = setmetatable({ clock = function() return Mock.now end }, { __index = os }),
+        RaycastParams = { new = function() return {} end },
     }
     env._G = G
     setmetatable(env, { __index = getfenv(0) })
