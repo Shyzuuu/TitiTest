@@ -14,7 +14,7 @@ Script client Roblox DOORS pour Delta Android (ASCII uniquement, a coller dans l
 
 | Fichier | Statut |
 |---|---|
-| `doors/AbyssPaint.lua` | Theme Windows 95 / MS Paint (32,5 Ko) : ESP par etiquettes 3D + contours (joueurs DOORS, entites, monstres/PNJ de tout jeu, objets), bouton de test ESP, avec nom, distance et vie, crucifix anime (chaines, cercle, aspiration), Fullbright, speed avec plafond anti-rollback (21), anti-glisse, FOV, anti-Screech/A90/Halt |
+| `doors/AbyssPaint.lua` | Theme Windows 95 / MS Paint (32,4 Ko) : ESP range dans gethui/CoreGui, filtre salle actuelle + porte suivante et listes d'objets DOORS reprises d'Abysall (entites, monstres/PNJ, joueurs DOORS, objets, or avec valeur), bouton de test ESP, crucifix anime, Fullbright, bonus de vitesse ajoute a la vitesse prevue par le jeu (plafond +6 anti-rollback), anti-acceleration (densite 100), anti-Screech/A90/Halt |
 | `doors/AbyssMini.lua` | **A utiliser sur Delta Android** (< 30 Ko) : ESP 12 categories + couleurs, Fullbright, brouillard, speed, FOV, alertes, anti-Screech/A90/Halt, auto, crucifix visuel. Affiche l'erreur a l'ecran s'il plante |
 | `doors/AbyssV5.lua` | Version complete (88 Ko) avec journal et auto-test : trop grosse pour etre collee dans Delta Android (rien ne s'affiche), utilisable sur PC ou dans Studio |
 | `doors/AbyssLite.lua` | Version courte confirmee sur Delta Android |

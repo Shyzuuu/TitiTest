@@ -214,7 +214,8 @@ local Defaults = {
         AbsoluteSize = V2(100, 30), AbsolutePosition = V2(0, 0) },
     LayerCollector = { Enabled = true },
     BasePart = { Anchored = false, CanCollide = true, Transparency = 0, LocalTransparencyModifier = 0, Size = V3(1, 1, 1),
-        AssemblyLinearVelocity = V3(0, 0, 0) },
+        AssemblyLinearVelocity = V3(0, 0, 0),
+        CurrentPhysicalProperties = { Density = 0.7, Friction = 0.3, Elasticity = 0.5, FrictionWeight = 1, ElasticityWeight = 1 } },
     Humanoid = { WalkSpeed = 16, JumpPower = 50, JumpHeight = 7.2, UseJumpPower = false, Health = 100, MaxHealth = 100,
         MoveDirection = V3(0, 0, 0), Sit = false, PlatformStand = false },
     Highlight = { Enabled = true, FillTransparency = 0.5 },
@@ -652,6 +653,10 @@ function Mock.env()
         end,
         os = setmetatable({ clock = function() return Mock.now end }, { __index = os }),
         RaycastParams = { new = function() return {} end },
+        PhysicalProperties = { new = function(d, f, e, fw, ew)
+            return { Density = d, Friction = f, Elasticity = e, FrictionWeight = fw, ElasticityWeight = ew }
+        end },
+        gethui = function() return CoreGui end,
     }
     env._G = G
     setmetatable(env, { __index = getfenv(0) })
@@ -661,7 +666,7 @@ end
 Mock.game, Mock.Workspace, Mock.Lighting, Mock.Players, Mock.LP, Mock.RunService = game, Workspace, Lighting, Players, LP, RunService
 Mock.UIS, Mock.Camera, Mock.Other, Mock.ReplicatedStorage = UserInputService, Camera, other, ReplicatedStorage
 Mock.C3, Mock.V3, Mock.CF = C3, V3, CF
-Mock.InstMT = InstMT
+Mock.InstMT, Mock.CoreGui = InstMT, CoreGui
 
 -- Charge et execute un script dans l'environnement simule (dans une coroutine, comme un executeur)
 function Mock.exec(source, chunkName, env)

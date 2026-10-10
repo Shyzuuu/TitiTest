@@ -66,8 +66,15 @@ Mock.run(11) -- laisse disparaitre les cibles creees par "Tester l'ESP"
 check(#all .. " boutons cliques deux fois sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
 
 -- ESP : etiquettes attachees aux cibles (methode confirmee sur Delta)
+-- Etiquettes et contours ranges dans le conteneur cache (gethui), relies par Adornee
+local function espFor(class, adornee)
+    local hold = Mock.CoreGui:FindFirstChild("AbyssEsp")
+    for _, d in ipairs(hold and hold:GetChildren() or {}) do
+        if d.ClassName == class and d.Adornee == adornee then return d end
+    end
+end
 local function tag(part)
-    local bb = part and part:FindFirstChildWhichIsA("BillboardGui")
+    local bb = part and espFor("BillboardGui", part)
     if not bb then return false, "" end
     return bb.Enabled, bb:FindFirstChildWhichIsA("TextLabel").Text
 end
@@ -75,7 +82,8 @@ click("Portes")
 Mock.run(0.6)
 local on1, t1 = tag(npcRoot)
 check("ESP monstre generique : nom + vie", on1 and string.find(t1, "Zombie", 1, true) and string.find(t1, "40/100PV", 1, true), t1)
-check("ESP monstre : contour actif", npc:FindFirstChildWhichIsA("Highlight") ~= nil and npc:FindFirstChildWhichIsA("Highlight").Enabled)
+check("ESP monstre : contour actif", espFor("Highlight", npc) ~= nil and espFor("Highlight", npc).Enabled)
+check("ESP range hors workspace", npc:FindFirstChildWhichIsA("Highlight") == nil and npcRoot:FindFirstChildWhichIsA("BillboardGui") == nil)
 local on2, t2 = tag(door.Door)
 check("ESP porte : 'Porte 8' et distance", on2 and string.find(t2, "Porte 8", 1, true) and string.find(t2, "m]", 1, true), t2)
 local on3, t3 = tag(Mock.Other.Character.HumanoidRootPart)
@@ -84,6 +92,33 @@ check("Compteur de cibles (barre d'etat)", string.find(texts(), "cibles 3", 1, t
 npc:Destroy()
 Mock.run(0.6)
 check("Monstre detruit : retire (memoire liberee)", string.find(texts(), "cibles 2", 1, true) ~= nil, texts())
+
+-- Filtre salle (Abysall) : objets de la salle actuelle + porte suivante seulement
+local gold = new("Model", { Name = "GoldPile" })
+new("Part", { Name = "Coin", CFrame = Mock.CF(2, 1, -18) }).Parent = gold
+gold:SetAttribute("GoldValue", 25)
+gold.Parent = room
+click("     Or")
+Mock.run(0.6)
+check("ESP or : valeur affichee", string.find(select(2, tag(gold.Coin)), "Or [25]", 1, true) ~= nil, select(2, tag(gold.Coin)))
+LP:SetAttribute("CurrentRoom", 3)
+Mock.run(0.3)
+check("Salle 3 : or et porte de la salle 7 masques", not tag(gold.Coin) and not tag(door.Door))
+LP:SetAttribute("CurrentRoom", 6)
+Mock.run(0.3)
+check("Salle 6 : porte suivante visible, or masque", tag(door.Door) and not tag(gold.Coin))
+LP:SetAttribute("CurrentRoom", 7)
+Mock.run(0.3)
+check("Salle 7 : or et porte visibles", tag(door.Door) and tag(gold.Coin))
+check("Contour de porte sur la piece Door", espFor("Highlight", door.Door) ~= nil)
+check("Barre d'etat : numero de salle", string.find(texts(), "salle 7", 1, true) ~= nil, texts())
+LP:SetAttribute("CurrentRoom", 3)
+click("Salle actuelle seulement")
+Mock.run(0.3)
+check("Filtre salle desactivable", tag(gold.Coin) == true)
+click("Salle actuelle seulement")
+LP:SetAttribute("CurrentRoom", nil)
+gold:Destroy()
 
 rooms.Parent = nil
 Mock.run(0.6)
@@ -106,7 +141,7 @@ click("Fullbright")
 Mock.run(0.2)
 check("Fullbright restaure", L.Ambient == ambient0)
 
--- Vitesse : plafond sur par defaut, libre si desactive
+-- Vitesse : bonus ajoute a la vitesse prevue par DOORS (15 de base), plafond +6 par defaut
 local hum, hrp = LP.Character.Humanoid, LP.Character.HumanoidRootPart
 local function plus(prefix)
     for _, d in ipairs(gui():GetDescendants()) do
@@ -118,35 +153,39 @@ local function plus(prefix)
     end
     check("stepper '" .. prefix .. "' present", false)
 end
--- le balayage "tous les boutons" laisse la vitesse a 25 (clamp a 15 puis +5 +5) => 35 apres deux "+"
-plus("Vitesse : ")
-plus("Vitesse : ")
+-- le balayage "tous les boutons" ramene le bonus a 5 (-1 -1 +1 +1) => 7 apres deux "+"
+plus("Bonus vitesse : ")
+plus("Bonus vitesse : ")
 click("Speed")
 Mock.run(0.2)
-check("Vitesse sure plafonne a 21", hum.WalkSpeed == 21, tostring(hum.WalkSpeed))
+check("Vitesse sure : 15 + 6 max", hum.WalkSpeed == 21, tostring(hum.WalkSpeed))
+LP.Character:SetAttribute("Crouching", true)
+Mock.run(0.2)
+check("Accroupi : 10 + 6 (pas de rollback)", hum.WalkSpeed == 16, tostring(hum.WalkSpeed))
+LP.Character:SetAttribute("Crouching", nil)
+local mods = new("Folder", { Name = "LiveModifiers" })
+new("Folder", { Name = "PlayerFaster" }).Parent = mods
+mods.Parent = Mock.ReplicatedStorage
+Mock.run(0.2)
+check("Modificateur PlayerFaster pris en compte", hum.WalkSpeed == 27, tostring(hum.WalkSpeed))
+mods:Destroy()
 click("Vitesse sure")
 Mock.run(0.2)
-check("Vitesse libre sans plafond", hum.WalkSpeed == 35, tostring(hum.WalkSpeed))
+check("Bonus libre sans plafond", hum.WalkSpeed == 22, tostring(hum.WalkSpeed))
+click("Vitesse sure")
 click("Speed")
 Mock.run(0.2)
 check("Vitesse restauree", hum.WalkSpeed == 16, tostring(hum.WalkSpeed))
 
--- Anti-glisse : inertie horizontale annulee, Y conserve, direction suivie
-click("Anti-glisse")
-hrp.AssemblyLinearVelocity = Mock.V3(40, -5, 30)
+-- Anti-acceleration : densite 100 sur tout le personnage, restauree a la desactivation
+click("Anti-acceleration")
 Mock.run(0.1)
-local v = hrp.AssemblyLinearVelocity
-check("Anti-glisse : arret net sans input", v.X == 0 and v.Z == 0 and v.Y == -5, tostring(v.X) .. "," .. tostring(v.Z))
-hum.MoveDirection = Mock.V3(1, 0, 0)
-hrp.AssemblyLinearVelocity = Mock.V3(5, 0, 50)
+local cpp = hrp.CustomPhysicalProperties
+check("Anti-acceleration : densite 100, friction gardee", cpp and cpp.Density == 100 and cpp.Friction == 0.3)
+check("Anti-acceleration : toutes les pieces", LP.Character.RightHand.CustomPhysicalProperties ~= nil)
+click("Anti-acceleration")
 Mock.run(0.1)
-v = hrp.AssemblyLinearVelocity
-check("Anti-glisse : vitesse alignee sur l'input", v.X == 16 and v.Z == 0, tostring(v.X) .. "," .. tostring(v.Z))
-hum.MoveDirection = Mock.V3(0, 0, 0)
-click("Anti-glisse")
-hrp.AssemblyLinearVelocity = Mock.V3(40, 0, 0)
-Mock.run(0.1)
-check("Anti-glisse coupe : physique libre", hrp.AssemblyLinearVelocity.X == 40)
+check("Anti-acceleration coupee : proprietes restaurees", hrp.CustomPhysicalProperties == nil)
 
 -- Crucifix : sequence complete sur un monstre, puis reutilisation
 local function monster(name, z)
