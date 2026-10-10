@@ -44,7 +44,7 @@ local gui = LP.PlayerGui:FindFirstChild("AbyssPaint")
 check("Interface creee, bandeau retire", gui ~= nil and LP.PlayerGui:FindFirstChild("AbyssBoot") == nil)
 local tabs = 0
 for _, d in ipairs(gui:GetDescendants()) do if d.ClassName == "ScrollingFrame" then tabs = tabs + 1 end end
-check("9 onglets + barre laterale defilante", tabs == 10, tostring(tabs))
+check("10 onglets + barre laterale defilante", tabs == 11, tostring(tabs))
 
 local function texts()
     local out = {}
@@ -232,6 +232,54 @@ for _, d in ipairs(gui:GetDescendants()) do
 end
 check("Bandeau RUSH retire apres le passage", bannerOff)
 rush:Destroy()
+
+-- Vitesse : valeur ecrite par le jeu + bonus ; anti-rollback baisse le bonus a chaque recul
+local hum, hrp = LP.Character.Humanoid, LP.Character.HumanoidRootPart
+click("     Speed")
+Mock.run(0.3)
+local base = hum.WalkSpeed
+check("Speed actif : 15 + bonus 5", base == 20, tostring(base))
+hum.WalkSpeed = 10 -- le jeu passe en accroupi
+Mock.run(0.2)
+check("Vitesse du jeu captee : 10 + 5", hum.WalkSpeed == 15, tostring(hum.WalkSpeed))
+hrp.CFrame = Mock.CF(0, 3, 0)
+Mock.run(0.2)
+hrp.CFrame = Mock.CF(0, 3, 30) -- recul de 30 studs en une frame : rollback serveur
+Mock.run(0.2)
+check("Anti-rollback : bonus ramene a +4", hum.WalkSpeed == 14, tostring(hum.WalkSpeed))
+check("Anti-rollback : compteur affiche", string.find(texts(), "rollbacks : 1", 1, true) ~= nil, texts())
+click("     Speed")
+Mock.run(0.2)
+check("Speed coupe : vitesse du jeu remise", hum.WalkSpeed == 10, tostring(hum.WalkSpeed))
+
+-- Honcho (Archives) : numero du bon colis
+local hroom = new("Model", { Name = "40" })
+local honcho = new("Model", { Name = "ArchivesHonchoRoom" })
+honcho.Parent = hroom
+local dep = new("Model", { Name = "ArchivesPackageDeposit" })
+dep:SetAttribute("BoxID", 7)
+new("Part", { Name = "Slot", CFrame = Mock.CF(5, 2, -6) }).Parent = dep
+dep.Parent = hroom
+local good = new("Model", { Name = "ArchivesStorageBox" })
+good:SetAttribute("Tool_BoxID", 7)
+local gp = new("Part", { Name = "Box", CFrame = Mock.CF(6, 2, -9) })
+gp.Parent = good
+good.Parent = honcho
+local bad = new("Model", { Name = "ArchivesStorageBox" })
+bad:SetAttribute("Tool_BoxID", 3)
+local bp = new("Part", { Name = "Box", CFrame = Mock.CF(7, 2, -9) })
+bp.Parent = bad
+bad.Parent = honcho
+hroom.Parent = rooms
+Mock.run(1.5)
+check("Honcho : numero du colis affiche", string.find(texts(), "Colis a recuperer : #7", 1, true) ~= nil, texts())
+local gon, gtxt = tag(gp)
+check("Honcho : bon colis marque BON COLIS #7", gon and string.find(gtxt, "BON COLIS #7", 1, true) ~= nil, gtxt)
+local _, btxt = tag(bp)
+check("Honcho : mauvais colis non marque", not string.find(btxt, "BON COLIS", 1, true), btxt)
+hroom:Destroy()
+Mock.run(5) -- la notification dure 4 s
+check("Honcho : bandeau retire apres la salle", string.find(texts(), "Colis a recuperer", 1, true) == nil)
 
 -- FOV retabli
 click("     FOV")

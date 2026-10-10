@@ -74,6 +74,7 @@ local Cfg = {
 	AntiVacuum = false, AntiAlma = false, AntiRansom = false, AntiTrash = false, Oxygen = false, Haste = false,
 	LibCode = false, InstantPrompt = false, Jump = false, NoShake = false, HideSeeThrough = false, NoVignette = false,
 	CrossAny = true, CrossRange = 80, AutoLoot = false, LootItems = true, RushBanner = true,
+	AntiRollback = true, Honcho = true, HonchoAuto = false,
 }
 for _, c in ipairs(Cats) do
 	CatInfo[c[1]] = c
@@ -640,14 +641,59 @@ on(RS.Heartbeat, function()
 	else
 		snap()
 	end
-	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-	if not hum or hum.Health <= 0 then return end
-	if Cfg.Speed then
-		defSpeed = defSpeed or hum.WalkSpeed
-		-- > +6 : rollback serveur
-		hum.WalkSpeed = baseSpeed(LP.Character, hum) + (Cfg.SafeSpeed and math.min(Cfg.SpeedV, 6) or Cfg.SpeedV)
-	end
 end)
+-- Vitesse : on part de la valeur que le jeu ecrit lui-meme (accroupi, blessures, modificateurs, floors)
+-- et on n'ajoute que le bonus. Anti-rollback : chaque recul force par le serveur retire 1 au bonus.
+local speedHum, speedConn, gameSpeed, writing = nil, nil, nil, false
+local lastPos, rbCut, rbLabel = nil, 0, nil
+local function bonus()
+	local b = Cfg.SafeSpeed and math.min(Cfg.SpeedV, 6) or Cfg.SpeedV
+	return math.max(0, b - (Cfg.AntiRollback and rbCut or 0))
+end
+local function applySpeed()
+	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 or not Cfg.Speed then return end
+	if hum ~= speedHum then
+		if speedConn then speedConn:Disconnect() end
+		speedHum, gameSpeed = hum, nil
+		speedConn = hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+			if not writing then gameSpeed = hum.WalkSpeed end
+		end)
+	end
+	defSpeed = defSpeed or hum.WalkSpeed
+	local want = (gameSpeed or baseSpeed(LP.Character, hum) or defSpeed) + bonus()
+	if hum.WalkSpeed ~= want then
+		writing = true
+		hum.WalkSpeed = want
+		writing = false
+	end
+end
+table.insert(Cleanups, function() if speedConn then speedConn:Disconnect() end end)
+-- Stepped = juste avant la physique : notre valeur est celle utilisee pour la frame
+on(RS.Stepped, applySpeed)
+on(RS.Heartbeat, function(dt)
+	applySpeed()
+	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+	local root = hum and hum.RootPart
+	-- cachette / siege : le jeu deplace le personnage lui-meme, ce n'est pas un rollback
+	if not root or not Cfg.Speed or not Cfg.AntiRollback or LP.Character:GetAttribute("Hiding") then lastPos = nil return end
+	local pos = root.Position
+	if lastPos then
+		-- saut impossible a cette vitesse en une frame = position corrigee par le serveur
+		local limit = math.max(6, hum.WalkSpeed * (tonumber(dt) or 0.016) * 5)
+		if (pos - lastPos).Magnitude > limit and not hum.Sit and bonus() > 0 then
+			rbCut = rbCut + 1
+			notify("Anti-rollback", "Recul detecte : bonus ramene a +" .. bonus() .. ".", NAVY)
+			if rbLabel then rbLabel.Text = "Bonus effectif : +" .. bonus() .. " (rollbacks : " .. rbCut .. ")" end
+		end
+	end
+	lastPos = pos
+end)
+Apply.SpeedV = function()
+	rbCut = 0
+	if rbLabel then rbLabel.Text = "Bonus effectif : +" .. bonus() end
+end
+Apply.SafeSpeed, Apply.AntiRollback = Apply.SpeedV, Apply.SpeedV
 -- Anti-acceleration : densite 100 = plus de glisse
 local physOld = {}
 local function slide(ch)
@@ -676,10 +722,14 @@ local function lightOff() if not Cfg.Fullbright and not Cfg.NoFog then restore()
 Apply.Fullbright, Apply.NoFog = lightOff, lightOff
 Apply.Speed = function(v)
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-	if not v and hum and defSpeed then hum.WalkSpeed = defSpeed end
-	if not v then defSpeed = nil end
+	if not v and hum then
+		writing = true
+		hum.WalkSpeed = gameSpeed or defSpeed or hum.WalkSpeed
+		writing = false
+	end
+	if not v then defSpeed, lastPos = nil, nil end
 end
-on(LP.CharacterAdded, function() defSpeed = nil end)
+on(LP.CharacterAdded, function() defSpeed, lastPos = nil, nil end)
 table.insert(Cleanups, function()
 	restore()
 	Apply.Speed(false)
@@ -863,6 +913,76 @@ loop(0.15, function()
 			end
 		end
 	end
+end)
+
+-- ===== Archives / Honcho : le depot donne les numeros (BoxID), on retrouve les bons colis =====
+CatInfo.Honcho = { "Honcho", "Colis Honcho", RGB(0, 255, 120), 1 }
+Cfg.E_Honcho = true
+local honchoLabel, honchoText = nil, ""
+local HonchoTag = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position = U2(0.5, 0, 0, 120), Size = U2(0, 360, 0, 34),
+	BackgroundColor3 = RGB(0, 90, 40), TextColor3 = WHITE, Font = ARC, TextSize = 18, TextStrokeTransparency = 0,
+	Text = "", Visible = false }, Gui)
+border(HonchoTag, 3)
+local function scanHoncho()
+	local rooms = workspace:FindFirstChild("CurrentRooms")
+	local ids, deposits, boxes = {}, {}, {}
+	for _, room in ipairs(rooms and rooms:GetChildren() or {}) do
+		if room:FindFirstChild("ArchivesHonchoRoom", true) then
+			for _, d in ipairs(room:GetDescendants()) do
+				if string.sub(d.Name, 1, 22) == "ArchivesPackageDeposit" and d:GetAttribute("BoxID") ~= nil then
+					local id = tostring(d:GetAttribute("BoxID"))
+					ids[id] = true
+					deposits[id] = d
+				elseif d.Name == "ArchivesStorageBox" and d:GetAttribute("Tool_BoxID") ~= nil then
+					table.insert(boxes, d)
+				end
+			end
+		end
+	end
+	local list = {}
+	for id in pairs(ids) do table.insert(list, id) end
+	table.sort(list, function(a, b) return (tonumber(a) or 0) < (tonumber(b) or 0) end)
+	if Cfg.Honcho then
+		for id, d in pairs(deposits) do
+			if not Track[d] then track(d, "Honcho", "DEPOT #" .. id) end
+		end
+		for _, b in ipairs(boxes) do
+			local id = tostring(b:GetAttribute("Tool_BoxID"))
+			local e = Track[b]
+			if ids[id] and (not e or e.cat ~= "Honcho") then
+				-- re-etiquetage : la meme boite passe de "Boite" a "BON COLIS #id"
+				if e then untrack(b) end
+				track(b, "Honcho", "BON COLIS #" .. id)
+			end
+		end
+	end
+	local txt = #list > 0 and ("Colis a recuperer : #" .. table.concat(list, ", #")) or ""
+	if txt ~= honchoText then
+		honchoText = txt
+		if txt ~= "" and Cfg.Honcho then notify("Honcho", txt, GREEN) end
+	end
+	HonchoTag.Text = txt
+	HonchoTag.Visible = Cfg.Honcho and txt ~= ""
+	if honchoLabel then honchoLabel.Text = txt ~= "" and txt or "Aucune salle Honcho en cours." end
+	return deposits
+end
+Apply.Honcho = function() scanHoncho() end
+-- Depot auto : colis tenu en main pose sur son depot, a la portee normale du prompt
+local function honchoDeposit(deposits)
+	local ch = LP.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	for _, t in ipairs(ch:GetChildren()) do
+		local id = t:GetAttribute("Tool_BoxID") or t:GetAttribute("BoxID")
+		local dep = id ~= nil and deposits[tostring(id)]
+		local pr = dep and dep:FindFirstChildWhichIsA("ProximityPrompt", true)
+		local pos = pr and promptPos(pr)
+		if pos and pr.Enabled and (pos - root.Position).Magnitude <= pr.MaxActivationDistance then firePrompt(pr) end
+	end
+end
+loop(1, function()
+	local deposits = scanHoncho()
+	if Cfg.HonchoAuto then honchoDeposit(deposits) end
 end)
 
 -- ===== Infos : oxygene, Haste, code bibliotheque =====
@@ -1117,7 +1237,12 @@ local function useCross()
 	if not root then return end
 	local target
 	local tap = LP:GetMouse().Target
-	if Cfg.CrossAny and tap then target = topModel(tap) end
+	if Cfg.CrossAny and tap then
+		local m = topModel(tap)
+		-- seulement un monstre / une entite : viser le sol ou un mur le detruisait localement
+		local e = Track[m]
+		if m:FindFirstChildOfClass("Humanoid") or (e and (e.cat == "Entities" or e.cat == "Monsters")) then target = m end
+	end
 	if not target then
 		local best
 		for o, e in pairs(Track) do
@@ -1188,7 +1313,9 @@ section(P, "Mouvement")
 toggle(P, "Speed", "Speed")
 stepper(P, "Bonus vitesse", "SpeedV", 1, 60, 1)
 toggle(P, "Vitesse sure (bonus max +6)", "SafeSpeed")
-label(P, "Bonus sur la vitesse du jeu. > +6 = rollback.")
+toggle(P, "Anti-rollback (bonus auto)", "AntiRollback")
+rbLabel = label(P, "Bonus effectif : +5")
+label(P, "Anti-rollback : a chaque recul force par le serveur, le bonus baisse de 1 jusqu'a ne plus etre ramene en arriere. Changer le bonus remet le compteur a zero.")
 toggle(P, "Anti-acceleration (anti-glisse)", "AntiSlide")
 section(P, "Camera")
 toggle(P, "FOV", "Fov")
@@ -1231,6 +1358,12 @@ section(P, "Auto-interaction")
 toggle(P, "Auto-interaction (tiroirs, coffres, or)", "AutoLoot")
 toggle(P, "Ramasser aussi objets et cles", "LootItems")
 label(P, "Approche-toi : tiroirs et coffres s'ouvrent, le contenu est ramasse. Portee normale du jeu, ignore les fausses portes, cachettes et verrous.")
+P = page("Archives")
+section(P, "Honcho")
+toggle(P, "Numeros des colis a recuperer", "Honcho")
+toggle(P, "Depot auto du colis tenu", "HonchoAuto")
+honchoLabel = label(P, "Aucune salle Honcho en cours.")
+label(P, "Les bons colis sont marques BON COLIS #numero (vert), les depots DEPOT #numero. Le numero s'affiche aussi en haut de l'ecran.")
 P = page("Infos")
 section(P, "Infos")
 infoLabel = label(P, "Oxygene : - | Haste : - | Code : -")

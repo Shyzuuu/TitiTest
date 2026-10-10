@@ -227,6 +227,16 @@ if tool then
     tool.Activated:Fire()
     Mock.run(3)
     check("Crucifix refuse un joueur", Mock.Other.Character.Parent ~= nil)
+    -- toucher le sol ne doit jamais le detruire : le crucifix vise alors le monstre le plus proche
+    local floor = new("Part", { Name = "Floor", CFrame = Mock.CF(0, 0, -5), Size = Mock.V3(40, 1, 40) })
+    floor.Parent = room
+    local m3 = monster("Ogre3", -12)
+    Mock.run(0.5)
+    Mock.mouse.Target = floor
+    tool.Activated:Fire()
+    Mock.run(4.5)
+    check("Sol touche : sol intact, monstre banni", floor.Parent ~= nil and m3.Parent == nil)
+    Mock.mouse.Target = nil
 end
 
 click("Fermer le script")
