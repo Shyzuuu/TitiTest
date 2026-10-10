@@ -1,7 +1,72 @@
 -- ABYSS PAINT : partie 2/3. Execute les 3 parties dans l'ordre (1, 2, 3...).
 local G = (getgenv and getgenv()) or _G
 G.AbyssSrc = G.AbyssSrc or {}
-G.AbyssSrc[2] = [==[local banner
+G.AbyssSrc[2] = [==[	Shears = "Cisailles", Glowsticks = "Batons", StarVial = "Fiole", StarJug = "Baril", Shakelight = "Lampe",
+	Straplight = "Lampe", BandagePack = "Bandages", BatteryPack = "Piles", ShieldMini = "Bouclier", ShieldBig = "Bouclier" })
+add("Chests", { DrawerContainer = "Tiroir", ChestBox = "Coffre", ChestBoxLocked = "Coffre", Toolbox = "Boite a outils",
+	Toolbox_Locked = "Boite a outils", Chest_Vine = "Coffre lianes", Toolshed_Small = "Cabane", Locker_Small_Locked = "Casier" })
+add("Hiding", { Wardrobe = "Armoire", Backdoor_Wardrobe = "Armoire", RetroWardrobe = "Armoire", Toolshed = "Armoire", Bed = "Lit",
+	Double_Bed = "Lit", Rooms_Locker = "Casier", Rooms_Locker_Fridge = "Casier", Locker_Large = "Casier", CircularVent = "Ventilation",
+	Dumpster = "Benne" })
+add("Entities", { RushMoving = "RUSH", AmbushMoving = "AMBUSH", Eyes = "EYES", SeekMoving = "SEEK", SeekMovingNewClone = "SEEK",
+	FigureRig = "FIGURE", FigureRagdoll = "FIGURE", BackdoorRush = "BLITZ", BackdoorLookman = "LOOKMAN", A60 = "A-60",
+	A120 = "A-120", GloombatSwarm = "GLOOMBATS", GrumbleRig = "GRUMBLE", Figure = "FIGURE", GiggleCeiling = "GIGGLE",
+	Snare = "SNARE", GloomPile = "OEUFS", Groundskeeper = "GROUNDSKEEPER", LiveEntityBramble = "BRAMBLE", JeffTheKiller = "JEFF",
+	SallyMoving = "SALLY", MonumentEntity = "MONUMENT", GlitchRush = "RUSH", GlitchAmbush = "AMBUSH", FrozenAmbush = "AMBUSH",
+	FakeDoor = "DUPE", DoorFake = "DUPE" })
+-- Floors (AbysallContinued) : une categorie ESP par floor, activee pour le floor detecte
+local FLOORS = {
+	{ "Hotel", { "hotel", "fools", "party" }, RGB(255, 170, 80), {
+		LiveHintBook = "Livre", LibraryHintPaper = "Papier indice", LibraryHintPaperHard = "Papier indice",
+		LiveBreakerPolePickup = "Disjoncteur", LeverForGate = "Levier grille", ElevatorBreaker = "Boitier ascenseur" } },
+	{ "Mines", { "mines", "ripple" }, RGB(255, 120, 40), {
+		MinesAnchor = "Ancre", MinesGenerator = "Generateur", FuseObtain = "Fusible", MinesGateButton = "Bouton grille",
+		WaterPump = "Pompe", MinecartRig = "Wagon" } },
+	{ "Rooms", { "rooms" }, RGB(120, 255, 200), { Rooms_Locker = "Casier", Rooms_Locker_Fridge = "Casier frigo" } },
+	{ "Backdoor", { "backdoor" }, RGB(200, 120, 255), { TimerLever = "Levier temps", Backdoor_Wardrobe = "Armoire" } },
+	{ "Outdoors", { "garden", "outdoor" }, RGB(120, 220, 80), {
+		GardenGateButton = "Bouton grille", Toolshed = "Cabane", Toolshed_Small = "Petite cabane", Chest_Vine = "Coffre lianes",
+		VineGuillotine = "Levier lianes", MandrakeLive = "Mandragore" } },
+	{ "Archives", { "archive" }, RGB(255, 230, 120), {
+		ArchivesStorageBox = "Boite", ArchivesStorageBoxCorrect = "BONNE boite", ArchivesPackageDeposit = "Depot",
+		ArchivesClock = "Horloge", ArchivesFishTank = "Aquarium", ArchivesFihTank = "Aquarium" } },
+	{ "Stairwell", { "stairwell" }, RGB(150, 200, 255), {
+		StairwellLockpickDoor = "Porte garage", StiarwellLockpickDoor = "Porte garage", StairwellFireAlarm = "Alarme incendie",
+		ShoppingCart = "Caddie", TV_Stand = "TV (Noise)" } },
+}
+for _, f in ipairs(FLOORS) do
+	local cat = "F_" .. f[1]
+	CatInfo[cat] = { cat, "Floor " .. f[1], f[3], 2 }
+	Cfg["E_" .. cat] = false
+	add(cat, f[4])
+end
+add("Entities", { Alma = "ALMA", Ransom = "RANSOM", Drones = "DRONES", Scribbles = "SCRIBBLES", Creak = "CREAK", Noise = "NOISE",
+	Dread = "DREAD" })
+local function rawFloor()
+	local gd = RSt:FindFirstChild("GameData")
+	local f = gd and gd:FindFirstChild("Floor")
+	return f and tostring(f.Value) or nil
+end
+local function floorOf(raw)
+	if not raw then
+		-- repli : indice structurel quand GameData manque
+		if workspace:FindFirstChild("ArchivesClock", true) then return "Archives" end
+		return nil
+	end
+	local l = string.lower(raw)
+	for _, f in ipairs(FLOORS) do
+		for _, k in ipairs(f[2]) do
+			if string.find(l, k, 1, true) then return f[1] end
+		end
+	end
+	return nil
+end
+
+-- Cachette la plus proche : ajoutee aux alertes des entites qui chassent
+local HIDE = { Wardrobe = 1, Backdoor_Wardrobe = 1, RetroWardrobe = 1, Toolshed = 1, Bed = 1, Double_Bed = 1, Rooms_Locker = 1,
+	Rooms_Locker_Fridge = 1, Locker_Large = 1, CircularVent = 1, Dumpster = 1 }
+local RUN = { RUSH = 1, AMBUSH = 1, BLITZ = 1, ["A-60"] = 1, ["A-120"] = 1 }
+local banner
 local function nearestHide()
 	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 	local rooms = workspace:FindFirstChild("CurrentRooms")
@@ -476,59 +541,5 @@ local function lootTarget(pr)
 	return false
 end
 local function firePrompt(pr)
-	if fireproximityprompt then
-		fireproximityprompt(pr)
-	else
-		pr:InputHoldBegin()
-		task.wait(pr.HoldDuration + 0.05)
-		pr:InputHoldEnd()
-	end
-end
-on(workspace.DescendantAdded, function(d) if d:IsA("ProximityPrompt") then Prompts[d] = true end end)
-task.spawn(function()
-	for n, d in ipairs(workspace:GetDescendants()) do
-		if d:IsA("ProximityPrompt") then Prompts[d] = true end
-		if n % 600 == 0 then task.wait() end
-	end
-end)
-loop(0.15, function()
-	if not Cfg.AutoLoot then return end
-	local ch = LP.Character
-	local root = ch and ch:FindFirstChild("HumanoidRootPart")
-	if not root or ch:GetAttribute("Hiding") then return end
-	local now = os.clock()
-	for pr in pairs(Prompts) do
-		if not pr.Parent then
-			Prompts[pr] = nil
-		elseif not fired[pr] or now - fired[pr] > 0.8 then
-			local pos = promptPos(pr)
-			-- portee du jeu (MaxActivationDistance) respectee : aucune extension de reach
-			if pos and (pos - root.Position).Magnitude <= pr.MaxActivationDistance and lootTarget(pr) then
-				fired[pr] = now
-				task.spawn(firePrompt, pr)
-			end
-		end
-	end
-end)
-
--- ===== Archives / Honcho : le depot donne les numeros (BoxID), on retrouve les bons colis =====
-CatInfo.Honcho = { "Honcho", "Colis Honcho", RGB(0, 255, 120), 1 }
-Cfg.E_Honcho = true
-local honchoLabel, honchoText = nil, ""
-local HonchoTag = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position = U2(0.5, 0, 0, 120), Size = U2(0, 360, 0, 34),
-	BackgroundColor3 = RGB(0, 90, 40), TextColor3 = WHITE, Font = ARC, TextSize = 18, TextStrokeTransparency = 0,
-	Text = "", Visible = false }, Gui)
-border(HonchoTag, 3)
-local function scanHoncho()
-	local rooms = workspace:FindFirstChild("CurrentRooms")
-	local ids, deposits, boxes = {}, {}, {}
-	for _, room in ipairs(rooms and rooms:GetChildren() or {}) do
-		if room:FindFirstChild("ArchivesHonchoRoom", true) then
-			for _, d in ipairs(room:GetDescendants()) do
-				if string.sub(d.Name, 1, 22) == "ArchivesPackageDeposit" and d:GetAttribute("BoxID") ~= nil then
-					local id = tostring(d:GetAttribute("BoxID"))
-					ids[id] = true
-					deposits[id] = d
-				elseif d.Name == "ArchivesStorageBox" and d:GetAttribute("Tool_BoxID") ~= nil then
 ]==]
 pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", { Title = "ABYSS PAINT", Text = "Partie 2/3 OK. Execute la partie 3.", Duration = 8 }) end)

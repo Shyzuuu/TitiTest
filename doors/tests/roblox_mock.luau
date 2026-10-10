@@ -206,7 +206,7 @@ local Events = {
     AncestryChanged = true, Destroying = true, MouseButton1Click = true, Activated = true, InputBegan = true,
     InputChanged = true, InputEnded = true, Equipped = true, Unequipped = true, CharacterAdded = true,
     PlayerAdded = true, PlayerRemoving = true, Heartbeat = true, RenderStepped = true, Stepped = true,
-    FocusLost = true, Focused = true, Triggered = true, PromptButtonHoldBegan = true,
+    FocusLost = true, Focused = true, Triggered = true, PromptButtonHoldBegan = true, Idled = true,
 }
 
 local Defaults = {
@@ -499,6 +499,14 @@ end
 local jsonStore, jsonId = {}, 0
 local HttpService = service("HttpService")
 local ProximityPromptService = service("ProximityPromptService")
+local VirtualUser = service("VirtualUser", {
+    CaptureController = function() Mock.vuCaptured = (Mock.vuCaptured or 0) + 1 end,
+    ClickButton2 = function() Mock.vuClicks = (Mock.vuClicks or 0) + 1 end,
+})
+local TeleportService = service("TeleportService", {
+    Teleport = function(_, placeId) Mock.teleported = placeId end,
+    TeleportToPlaceInstance = function(_, placeId, jobId) Mock.teleported = placeId .. "/" .. jobId end,
+})
 HttpService.__custom.JSONEncode = function(_, t)
     jsonId = jsonId + 1
     jsonStore["json#" .. jsonId] = table.clone(t)
@@ -568,6 +576,7 @@ local services = {
     Players = Players, RunService = RunService, UserInputService = UserInputService, Lighting = Lighting,
     HttpService = HttpService, TweenService = TweenService, ReplicatedStorage = ReplicatedStorage,
     StarterGui = StarterGui, CoreGui = CoreGui, Workspace = Workspace, ProximityPromptService = ProximityPromptService,
+    VirtualUser = VirtualUser, TeleportService = TeleportService,
 }
 game.__custom = {
     GetService = function(_, name)
@@ -576,6 +585,8 @@ game.__custom = {
         return s
     end,
     IsLoaded = function() return true end,
+    PlaceId = 6839171747,
+    JobId = "job-test",
 }
 
 --============================== API PUBLIQUE ==============================--
@@ -683,6 +694,28 @@ function Mock.exec(source, chunkName, env)
     local ok, e = coroutine.resume(co)
     if not ok then record("script", debug.traceback(co, tostring(e))) end
     return co
+end
+
+-- Passe l'ecran de verrou (code saisi au clavier) puis choisit un jeu
+function Mock.unlock(code, gameName)
+    local gate = LP.PlayerGui:FindFirstChild("AbyssGate")
+    if not gate then return false, "ecran de verrou absent" end
+    for _, d in ipairs(gate:GetDescendants()) do
+        if d.ClassName == "TextBox" then d.Text = code end
+    end
+    for _, d in ipairs(gate:GetDescendants()) do
+        if d.ClassName == "TextButton" and d.Text == "Deverrouiller" then d.MouseButton1Click:Fire() end
+    end
+    Mock.run(0.2)
+    if not gameName then return true end
+    for _, d in ipairs(gate:GetDescendants()) do
+        if d.ClassName == "TextButton" and string.sub(d.Text, 1, #gameName) == gameName then
+            d.MouseButton1Click:Fire()
+            Mock.run(0.3)
+            return true
+        end
+    end
+    return false, "jeu introuvable : " .. gameName
 end
 
 return Mock

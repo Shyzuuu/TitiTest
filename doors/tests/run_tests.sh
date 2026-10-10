@@ -32,3 +32,5 @@ echo "=== AbyssPaint (floors + protections) ==="
 "$LUAU" doors/tests/test_abyss_fusion.luau
 echo "=== AbyssPaint en 3 parties (Delta) ==="
 "$LUAU" doors/tests/test_abyss_parts.luau
+echo "=== Verrou + choix du jeu ==="
+"$LUAU" doors/tests/test_abyss_gate.luau

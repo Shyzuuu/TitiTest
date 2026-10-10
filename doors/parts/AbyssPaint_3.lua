@@ -1,7 +1,61 @@
 -- ABYSS PAINT : partie 3/3 (derniere). Lance le script complet.
 local G = (getgenv and getgenv()) or _G
 G.AbyssSrc = G.AbyssSrc or {}
-G.AbyssSrc[3] = [==[					table.insert(boxes, d)
+G.AbyssSrc[3] = [==[	if fireproximityprompt then
+		fireproximityprompt(pr)
+	else
+		pr:InputHoldBegin()
+		task.wait(pr.HoldDuration + 0.05)
+		pr:InputHoldEnd()
+	end
+end
+on(workspace.DescendantAdded, function(d) if d:IsA("ProximityPrompt") then Prompts[d] = true end end)
+task.spawn(function()
+	for n, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("ProximityPrompt") then Prompts[d] = true end
+		if n % 600 == 0 then task.wait() end
+	end
+end)
+loop(0.15, function()
+	if not Cfg.AutoLoot then return end
+	local ch = LP.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart")
+	if not root or ch:GetAttribute("Hiding") then return end
+	local now = os.clock()
+	for pr in pairs(Prompts) do
+		if not pr.Parent then
+			Prompts[pr] = nil
+		elseif not fired[pr] or now - fired[pr] > 0.8 then
+			local pos = promptPos(pr)
+			-- portee du jeu (MaxActivationDistance) respectee : aucune extension de reach
+			if pos and (pos - root.Position).Magnitude <= pr.MaxActivationDistance and lootTarget(pr) then
+				fired[pr] = now
+				task.spawn(firePrompt, pr)
+			end
+		end
+	end
+end)
+
+-- ===== Archives / Honcho : le depot donne les numeros (BoxID), on retrouve les bons colis =====
+CatInfo.Honcho = { "Honcho", "Colis Honcho", RGB(0, 255, 120), 1 }
+Cfg.E_Honcho = true
+local honchoLabel, honchoText = nil, ""
+local HonchoTag = new("TextLabel", { AnchorPoint = Vector2.new(0.5, 0), Position = U2(0.5, 0, 0, 120), Size = U2(0, 360, 0, 34),
+	BackgroundColor3 = RGB(0, 90, 40), TextColor3 = WHITE, Font = ARC, TextSize = 18, TextStrokeTransparency = 0,
+	Text = "", Visible = false }, Gui)
+border(HonchoTag, 3)
+local function scanHoncho()
+	local rooms = workspace:FindFirstChild("CurrentRooms")
+	local ids, deposits, boxes = {}, {}, {}
+	for _, room in ipairs(rooms and rooms:GetChildren() or {}) do
+		if room:FindFirstChild("ArchivesHonchoRoom", true) then
+			for _, d in ipairs(room:GetDescendants()) do
+				if string.sub(d.Name, 1, 22) == "ArchivesPackageDeposit" and d:GetAttribute("BoxID") ~= nil then
+					local id = tostring(d:GetAttribute("BoxID"))
+					ids[id] = true
+					deposits[id] = d
+				elseif d.Name == "ArchivesStorageBox" and d:GetAttribute("Tool_BoxID") ~= nil then
+					table.insert(boxes, d)
 				end
 			end
 		end

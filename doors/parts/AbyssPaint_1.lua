@@ -1,7 +1,7 @@
 -- ABYSS PAINT : partie 1/3. Execute les 3 parties dans l'ordre (1, 2, 3...).
 local G = (getgenv and getgenv()) or _G
 G.AbyssSrc = {}
-G.AbyssSrc[1] = [==[-- ABYSS PAINT // DOORS - Delta Android. Script unique : ESP, floors, protections, crucifix. ASCII
+G.AbyssSrc[1] = [==[-- ABYSS HUB // Delta Android. Verrou par code puis choix du jeu (DOORS, Universel). ASCII
 local Players = game:GetService("Players")
 local RS = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -19,6 +19,147 @@ end
 local U2, RGB, V3, CODE, ARC = UDim2.new, Color3.fromRGB, Vector3.new, Enum.Font.Code, Enum.Font.Arcade
 local GREY, DARK, BLACK, WHITE = RGB(192, 192, 192), RGB(128, 128, 128), Color3.new(0, 0, 0), Color3.new(1, 1, 1)
 local NAVY, GREEN, RED, CYAN = RGB(0, 0, 128), RGB(0, 255, 0), RGB(255, 0, 0), RGB(0, 255, 255)
+
+-- ===== Verrou par code + choix du jeu =====
+-- Le code n'est jamais ecrit dans le script : seule son empreinte (hash FNV-1a sale, 2000 tours) l'est.
+local KEY_HASH = 1409457349
+local function keyHash(str)
+	local x = 2166136261
+	for r = 1, 2000 do
+		for i = 1, #str do
+			x = bit32.bxor(x, string.byte(str, i))
+			-- x * 16777619 mod 2^32, decompose pour rester exact en double precision
+			x = (bit32.lshift(x, 24) + x * 403) % 4294967296
+		end
+		x = bit32.bxor(x, r)
+	end
+	return x
+end
+local GAMES = {
+	{ "DOORS", "ESP, floors, protections, auto-loot, Honcho, crucifix" },
+	{ "Universel", "Anti-AFK et serveur (tous les jeux)" },
+}
+local choice
+do
+	local gate = Instance.new("ScreenGui")
+	gate.Name, gate.ResetOnSpawn, gate.DisplayOrder, gate.IgnoreGuiInset = "AbyssGate", false, 1001, true
+	gate.Parent = PG
+	local function mk(class, props, parent)
+		local o = Instance.new(class)
+		for k, v in pairs(props) do o[k] = v end
+		o.Parent = parent
+		return o
+	end
+	local win = mk("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0), Size = U2(0, 300, 0, 230),
+		BackgroundColor3 = GREY, BorderColor3 = BLACK, BorderSizePixel = 3, Active = true }, gate)
+	local bar = mk("TextLabel", { Size = U2(1, -8, 0, 24), Position = U2(0, 4, 0, 4), BackgroundColor3 = WHITE, BorderSizePixel = 0,
+		Font = ARC, TextSize = 16, TextColor3 = WHITE, Text = "  ABYSS HUB - VERROU", TextXAlignment = Enum.TextXAlignment.Left }, win)
+	mk("UIGradient", { Color = ColorSequence.new(NAVY, RGB(16, 132, 208)) }, bar)
+	local info = mk("TextLabel", { Size = U2(1, -16, 0, 34), Position = U2(0, 8, 0, 34), BackgroundTransparency = 1, Font = CODE,
+		TextSize = 13, TextColor3 = BLACK, TextWrapped = true, Text = "Entre le code pour deverrouiller." }, win)
+	local box = mk("TextBox", { Size = U2(1, -16, 0, 34), Position = U2(0, 8, 0, 74), BackgroundColor3 = WHITE, BorderColor3 = BLACK,
+		BorderSizePixel = 2, Font = CODE, TextSize = 18, TextColor3 = BLACK, Text = "", PlaceholderText = "code",
+		ClearTextOnFocus = false }, win)
+	local list = mk("Frame", { Size = U2(1, -16, 1, -80), Position = U2(0, 8, 0, 72), BackgroundTransparency = 1, Visible = false }, win)
+	mk("UIListLayout", { Padding = UDim.new(0, 6) }, list)
+	local function btn(parent, text, h)
+		return mk("TextButton", { Size = U2(1, 0, 0, h or 34), BackgroundColor3 = GREY, BorderColor3 = BLACK, BorderSizePixel = 2,
+			Font = CODE, TextSize = 13, TextColor3 = BLACK, Text = text, AutoButtonColor = true }, parent)
+	end
+	local unlockB = btn(win, "Deverrouiller")
+	unlockB.Position = U2(0, 8, 0, 116)
+	unlockB.Size = U2(1, -16, 0, 34)
+	local quitB = btn(win, "Fermer")
+	quitB.Position = U2(0, 8, 0, 158)
+	quitB.Size = U2(1, -16, 0, 30)
+	local closed, tries, waiting = false, 0, false
+	local function showGames()
+		box.Visible, unlockB.Visible, quitB.Visible, list.Visible = false, false, false, true
+		bar.Text = "  ABYSS HUB - CHOIX DU JEU"
+		info.Text = "Choisis le jeu :"
+		for _, g in ipairs(GAMES) do
+			local b = btn(list, g[1] .. "  -  " .. g[2], 40)
+			b.TextWrapped = true
+			b.MouseButton1Click:Connect(function() choice = g[1] end)
+		end
+		btn(list, "Fermer", 30).MouseButton1Click:Connect(function() closed = true end)
+	end
+	local function tryKey()
+		if keyHash("AbyssPaint#" .. box.Text) == KEY_HASH then
+			G.AbyssUnlocked = true
+			showGames()
+		else
+			tries = tries + 1
+			box.Text = ""
+			info.Text = "Code faux (" .. tries .. "). Reessaie."
+			-- attente croissante : rend les essais en serie penibles
+			if tries >= 3 then
+				waiting, unlockB.Text = true, "Attends..."
+				task.wait(math.min(tries * 2, 20))
+				waiting, unlockB.Text = false, "Deverrouiller"
+			end
+		end
+	end
+	unlockB.MouseButton1Click:Connect(function() if not waiting then tryKey() end end)
+	box.FocusLost:Connect(function(enter) if enter and not waiting then tryKey() end end)
+	quitB.MouseButton1Click:Connect(function() closed = true end)
+	-- deja deverrouille dans cette session : on passe directement au choix du jeu
+	if G.AbyssUnlocked then showGames() end
+	while not choice and not closed and gate.Parent do task.wait(0.1) end
+	gate:Destroy()
+end
+if not choice then return end
+
+if choice == "Universel" then
+	-- ===== Universel : anti-AFK + serveur =====
+	local VU = game:GetService("VirtualUser")
+	local TPS = game:GetService("TeleportService")
+	local alive, conns = true, {}
+	local gui = Instance.new("ScreenGui")
+	gui.Name, gui.ResetOnSpawn, gui.DisplayOrder = "AbyssUniversal", false, 999
+	gui.Parent = PG
+	local win = Instance.new("Frame")
+	win.Size, win.Position, win.BackgroundColor3, win.BorderColor3, win.BorderSizePixel = U2(0, 260, 0, 170), U2(0, 10, 0.5, -85), GREY, BLACK, 3
+	win.Active, win.Parent = true, gui
+	local lay = Instance.new("UIListLayout")
+	lay.Padding, lay.Parent = UDim.new(0, 6), win
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop, pad.PaddingLeft, pad.PaddingRight, pad.Parent = UDim.new(0, 6), UDim.new(0, 6), UDim.new(0, 6), win
+	local function item(class, text)
+		local o = Instance.new(class)
+		o.Size, o.BackgroundColor3, o.BorderColor3, o.BorderSizePixel = U2(1, 0, 0, 30), GREY, BLACK, 2
+		o.Font, o.TextSize, o.TextColor3, o.Text, o.Parent = CODE, 13, BLACK, text, win
+		return o
+	end
+	local status = item("TextLabel", "Anti-AFK : actif (0 kick evite)")
+	local saved = 0
+	-- Idled = Roblox va deconnecter pour inactivite : un clic virtuel remet le compteur a zero
+	table.insert(conns, LP.Idled:Connect(function()
+		if not alive then return end
+		pcall(function()
+			VU:CaptureController()
+			VU:ClickButton2(Vector2.new())
+		end)
+		saved = saved + 1
+		status.Text = "Anti-AFK : actif (" .. saved .. " kick evite)"
+	end))
+	item("TextButton", "Rejoindre ce serveur").MouseButton1Click:Connect(function()
+		pcall(function() TPS:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end)
+	end)
+	item("TextButton", "Autre serveur").MouseButton1Click:Connect(function()
+		pcall(function() TPS:Teleport(game.PlaceId, LP) end)
+	end)
+	local function stopU()
+		if not alive then return end
+		alive = false
+		for _, c in ipairs(conns) do c:Disconnect() end
+		gui:Destroy()
+		if G.AbyssStop == stopU then G.AbyssStop = nil end
+	end
+	item("TextButton", "Fermer").MouseButton1Click:Connect(stopU)
+	G.AbyssStop = stopU
+	return
+end
 
 local Boot = Instance.new("ScreenGui")
 Boot.Name, Boot.ResetOnSpawn, Boot.DisplayOrder = "AbyssBoot", false, 1000
@@ -349,70 +490,5 @@ add("Objectives", { LiveHintBook = "Livre", LiveBreakerPolePickup = "Disjoncteur
 add("Gold", { GoldPile = "Or", StardustPickup = "Poussiere" })
 add("Items", { Lighter = "Briquet", Flashlight = "Lampe", Lockpick = "Crochets", Vitamins = "Vitamines", Bandage = "Bandage",
 	Crucifix = "Crucifix", CrucifixWall = "Crucifix", SkeletonKey = "Cle squelette", Battery = "Pile", Candle = "Bougie",
-	Shears = "Cisailles", Glowsticks = "Batons", StarVial = "Fiole", StarJug = "Baril", Shakelight = "Lampe",
-	Straplight = "Lampe", BandagePack = "Bandages", BatteryPack = "Piles", ShieldMini = "Bouclier", ShieldBig = "Bouclier" })
-add("Chests", { DrawerContainer = "Tiroir", ChestBox = "Coffre", ChestBoxLocked = "Coffre", Toolbox = "Boite a outils",
-	Toolbox_Locked = "Boite a outils", Chest_Vine = "Coffre lianes", Toolshed_Small = "Cabane", Locker_Small_Locked = "Casier" })
-add("Hiding", { Wardrobe = "Armoire", Backdoor_Wardrobe = "Armoire", RetroWardrobe = "Armoire", Toolshed = "Armoire", Bed = "Lit",
-	Double_Bed = "Lit", Rooms_Locker = "Casier", Rooms_Locker_Fridge = "Casier", Locker_Large = "Casier", CircularVent = "Ventilation",
-	Dumpster = "Benne" })
-add("Entities", { RushMoving = "RUSH", AmbushMoving = "AMBUSH", Eyes = "EYES", SeekMoving = "SEEK", SeekMovingNewClone = "SEEK",
-	FigureRig = "FIGURE", FigureRagdoll = "FIGURE", BackdoorRush = "BLITZ", BackdoorLookman = "LOOKMAN", A60 = "A-60",
-	A120 = "A-120", GloombatSwarm = "GLOOMBATS", GrumbleRig = "GRUMBLE", Figure = "FIGURE", GiggleCeiling = "GIGGLE",
-	Snare = "SNARE", GloomPile = "OEUFS", Groundskeeper = "GROUNDSKEEPER", LiveEntityBramble = "BRAMBLE", JeffTheKiller = "JEFF",
-	SallyMoving = "SALLY", MonumentEntity = "MONUMENT", GlitchRush = "RUSH", GlitchAmbush = "AMBUSH", FrozenAmbush = "AMBUSH",
-	FakeDoor = "DUPE", DoorFake = "DUPE" })
--- Floors (AbysallContinued) : une categorie ESP par floor, activee pour le floor detecte
-local FLOORS = {
-	{ "Hotel", { "hotel", "fools", "party" }, RGB(255, 170, 80), {
-		LiveHintBook = "Livre", LibraryHintPaper = "Papier indice", LibraryHintPaperHard = "Papier indice",
-		LiveBreakerPolePickup = "Disjoncteur", LeverForGate = "Levier grille", ElevatorBreaker = "Boitier ascenseur" } },
-	{ "Mines", { "mines", "ripple" }, RGB(255, 120, 40), {
-		MinesAnchor = "Ancre", MinesGenerator = "Generateur", FuseObtain = "Fusible", MinesGateButton = "Bouton grille",
-		WaterPump = "Pompe", MinecartRig = "Wagon" } },
-	{ "Rooms", { "rooms" }, RGB(120, 255, 200), { Rooms_Locker = "Casier", Rooms_Locker_Fridge = "Casier frigo" } },
-	{ "Backdoor", { "backdoor" }, RGB(200, 120, 255), { TimerLever = "Levier temps", Backdoor_Wardrobe = "Armoire" } },
-	{ "Outdoors", { "garden", "outdoor" }, RGB(120, 220, 80), {
-		GardenGateButton = "Bouton grille", Toolshed = "Cabane", Toolshed_Small = "Petite cabane", Chest_Vine = "Coffre lianes",
-		VineGuillotine = "Levier lianes", MandrakeLive = "Mandragore" } },
-	{ "Archives", { "archive" }, RGB(255, 230, 120), {
-		ArchivesStorageBox = "Boite", ArchivesStorageBoxCorrect = "BONNE boite", ArchivesPackageDeposit = "Depot",
-		ArchivesClock = "Horloge", ArchivesFishTank = "Aquarium", ArchivesFihTank = "Aquarium" } },
-	{ "Stairwell", { "stairwell" }, RGB(150, 200, 255), {
-		StairwellLockpickDoor = "Porte garage", StiarwellLockpickDoor = "Porte garage", StairwellFireAlarm = "Alarme incendie",
-		ShoppingCart = "Caddie", TV_Stand = "TV (Noise)" } },
-}
-for _, f in ipairs(FLOORS) do
-	local cat = "F_" .. f[1]
-	CatInfo[cat] = { cat, "Floor " .. f[1], f[3], 2 }
-	Cfg["E_" .. cat] = false
-	add(cat, f[4])
-end
-add("Entities", { Alma = "ALMA", Ransom = "RANSOM", Drones = "DRONES", Scribbles = "SCRIBBLES", Creak = "CREAK", Noise = "NOISE",
-	Dread = "DREAD" })
-local function rawFloor()
-	local gd = RSt:FindFirstChild("GameData")
-	local f = gd and gd:FindFirstChild("Floor")
-	return f and tostring(f.Value) or nil
-end
-local function floorOf(raw)
-	if not raw then
-		-- repli : indice structurel quand GameData manque
-		if workspace:FindFirstChild("ArchivesClock", true) then return "Archives" end
-		return nil
-	end
-	local l = string.lower(raw)
-	for _, f in ipairs(FLOORS) do
-		for _, k in ipairs(f[2]) do
-			if string.find(l, k, 1, true) then return f[1] end
-		end
-	end
-	return nil
-end
-
--- Cachette la plus proche : ajoutee aux alertes des entites qui chassent
-local HIDE = { Wardrobe = 1, Backdoor_Wardrobe = 1, RetroWardrobe = 1, Toolshed = 1, Bed = 1, Double_Bed = 1, Rooms_Locker = 1,
-	Rooms_Locker_Fridge = 1, Locker_Large = 1, CircularVent = 1, Dumpster = 1 }
-local RUN = { RUSH = 1, AMBUSH = 1, BLITZ = 1, ["A-60"] = 1, ["A-120"] = 1 }
 ]==]
 pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", { Title = "ABYSS PAINT", Text = "Partie 1/3 OK. Execute la partie 2.", Duration = 8 }) end)

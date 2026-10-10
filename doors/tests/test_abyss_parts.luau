@@ -31,6 +31,7 @@ Mock.run(0.1)
 check("Partie 1 seule : script pas encore lance", gui() == nil)
 Mock.exec(p2, "Partie2", env)
 Mock.exec(p3, "Partie3", env)
+assert(Mock.unlock("3719", "DOORS"))
 Mock.run(1.5)
 check("3 parties : script lance sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
 check("3 parties : interface affichee, bandeau de chargement retire",

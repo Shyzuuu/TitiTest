@@ -53,6 +53,7 @@ local function click(text)
 end
 
 Mock.exec(src, "AbyssPaint", (Mock.env()))
+assert(Mock.unlock("3719", "DOORS"))
 Mock.run(1)
 check("Chargement sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
 check("Interface creee, bandeau retire", gui() ~= nil and LP.PlayerGui:FindFirstChild("AbyssBoot") == nil)

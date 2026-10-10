@@ -41,6 +41,7 @@ new("TextLabel", { Name = "Other", Text = "x", FontFace = { Family = "rbxasset:/
 mui.Parent = LP.PlayerGui
 
 Mock.exec(paint, "AbyssPaint", (Mock.env()))
+assert(Mock.unlock("3719", "DOORS"))
 Mock.run(1.5)
 check("Script unique charge sans erreur", #Mock.errors == 0, table.concat(Mock.errors, "\n"))
 local gui = LP.PlayerGui:FindFirstChild("AbyssPaint")
