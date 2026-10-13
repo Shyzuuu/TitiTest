@@ -35,7 +35,8 @@ export function createAppServer(ctx: AppContext): AppServer {
   });
 
   app.disable('x-powered-by');
-  app.set('trust proxy', 'loopback');
+  // Derrière un hébergeur (Render…), l'IP réelle du client vient de X-Forwarded-For.
+  app.set('trust proxy', ctx.config.trustProxy);
   app.use(
     helmet({
       contentSecurityPolicy: {

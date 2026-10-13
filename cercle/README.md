@@ -181,6 +181,12 @@ Les tests serveur utilisent une horloge pilotable et un fournisseur IA contrôla
 
 ## Déploiement
 
+### En ligne en quelques clics (Render, gratuit)
+
+Le fichier `render.yaml` à la racine du dépôt décrit tout. Sur https://render.com : connexion avec GitHub → **New** → **Blueprint** → dépôt `TitiTest`, branche `claude/multi-character-messaging-app-cvbakx` → saisir un mot de passe pour `APP_PASSWORD` → **Apply**. Le site est disponible à l'adresse `https://cercle-xxxx.onrender.com` affichée par Render (identifiant `moi`). Offre gratuite : le service s'endort après inactivité (premier chargement d'environ 1 minute) et le disque n'est pas persistant (les données repartent de la démonstration après un redémarrage).
+
+### Serveur personnel
+
 Le serveur sert lui-même le client construit : un seul processus Node.
 
 ```bash

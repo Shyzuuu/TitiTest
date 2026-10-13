@@ -22,6 +22,8 @@ const envSchema = z.object({
   COOKIE_SECURE: boolFromEnv,
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   CORS_ORIGIN: z.string().optional(),
+  /** Nombre de proxys de confiance devant le serveur (ex. 1 sur Render), ou « loopback ». */
+  TRUST_PROXY: z.string().default('loopback'),
   SERVE_CLIENT: boolFromEnv,
   CLIENT_DIST: z.string().default('../client/dist'),
   AI_PROVIDER: z.enum(['auto', 'anthropic', 'local']).default('auto'),
@@ -54,6 +56,7 @@ export interface AppConfig {
     sessionTtlMs: number;
   };
   corsOrigin?: string;
+  trustProxy: number | string;
   serveClient: boolean;
   clientDist: string;
   ai: {
@@ -104,6 +107,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env, overrides: P
       sessionTtlMs: env.SESSION_TTL_DAYS * 24 * 3600 * 1000,
     },
     corsOrigin: env.CORS_ORIGIN,
+    trustProxy: /^\d+$/.test(env.TRUST_PROXY) ? Number(env.TRUST_PROXY) : env.TRUST_PROXY,
     serveClient: env.SERVE_CLIENT ?? env.NODE_ENV === 'production',
     clientDist: path.resolve(SERVER_ROOT, env.CLIENT_DIST),
     ai: {
