@@ -1,0 +1,50 @@
+{
+  "name": "FactoryEmpireTycoon",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "ServerStorage": {
+      "$className": "ServerStorage"
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": false,
+        "Gravity": 196.2
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "ClockTime": 17.6,
+        "Brightness": 2.2,
+        "Ambient": [0.28, 0.27, 0.3],
+        "OutdoorAmbient": [0.45, 0.42, 0.45],
+        "EnvironmentDiffuseScale": 0.6,
+        "EnvironmentSpecularScale": 0.8,
+        "GlobalShadows": true,
+        "ShadowSoftness": 0.25
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    }
+  }
+}
