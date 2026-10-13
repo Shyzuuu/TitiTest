@@ -1,0 +1,35 @@
+{
+  "name": "@cercle/server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx watch --clear-screen=false src/index.ts",
+    "start": "NODE_ENV=production NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx src/index.ts",
+    "db:migrate": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx src/cli.ts migrate",
+    "db:seed": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx src/cli.ts seed",
+    "db:reset": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx src/cli.ts reset",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "cookie": "^1.0.2",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "socket.io": "^4.8.1",
+    "tsx": "^4.19.3",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.0",
+    "@types/supertest": "^6.0.2",
+    "socket.io-client": "^4.8.1",
+    "supertest": "^7.1.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.1.1"
+  }
+}

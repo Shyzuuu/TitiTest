@@ -1,0 +1,27 @@
+# Déploiement Render (Blueprint) de l'application Cercle.
+# Render → New → Blueprint → ce dépôt → branche contenant ce fichier.
+services:
+  - type: web
+    name: cercle
+    runtime: node
+    plan: free
+    rootDir: cercle
+    branch: claude/multi-character-messaging-app-cvbakx
+    # Les dépendances de développement (Vite, TypeScript) sont nécessaires à la construction du client.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22.13.0"
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SIMULATION_SPEED
+        value: demo
+      - key: APP_USERNAME
+        value: moi
+      # Demandé lors de la création : c'est le mot de passe de connexion au site.
+      - key: APP_PASSWORD
+        sync: false
