@@ -14,7 +14,7 @@ const boolFromEnv = z
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
-  HOST: z.string().default('127.0.0.1'),
+  HOST: z.string().optional(),
   DATABASE_FILE: z.string().default('data/cercle.db'),
   APP_USERNAME: z.string().min(1).max(40).default('moi'),
   APP_PASSWORD: z.string().min(4).max(200).optional(),
@@ -23,7 +23,7 @@ const envSchema = z.object({
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   CORS_ORIGIN: z.string().optional(),
   /** Nombre de proxys de confiance devant le serveur (ex. 1 sur Render), ou « loopback ». */
-  TRUST_PROXY: z.string().default('loopback'),
+  TRUST_PROXY: z.string().optional(),
   SERVE_CLIENT: boolFromEnv,
   CLIENT_DIST: z.string().default('../client/dist'),
   AI_PROVIDER: z.enum(['auto', 'anthropic', 'local']).default('auto'),
@@ -86,8 +86,13 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env, overrides: P
     throw new Error(`Configuration invalide : ${issues}`);
   }
   const env = parsed.data;
+  // Render définit RENDER=true : valeurs par défaut adaptées, sans configuration manuelle.
+  const onPlatform = source.RENDER === 'true';
+  const trustProxy = env.TRUST_PROXY;
   if (env.NODE_ENV === 'production' && !env.APP_PASSWORD) {
-    throw new Error('APP_PASSWORD est obligatoire en production.');
+    throw new Error(
+      'APP_PASSWORD est obligatoire en production : ajoutez la variable d’environnement APP_PASSWORD (votre mot de passe de connexion).',
+    );
   }
   const databaseFile =
     env.DATABASE_FILE === ':memory:' || path.isAbsolute(env.DATABASE_FILE)
@@ -96,7 +101,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env, overrides: P
   const base: AppConfig = {
     env: env.NODE_ENV,
     port: env.PORT,
-    host: env.HOST,
+    // Hébergeur (Render…) ou production : écoute sur toutes les interfaces, sinon le port n'est pas détecté.
+    host: env.HOST ?? (onPlatform || env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'),
     databaseFile,
     auth: {
       username: env.APP_USERNAME,
@@ -107,7 +113,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env, overrides: P
       sessionTtlMs: env.SESSION_TTL_DAYS * 24 * 3600 * 1000,
     },
     corsOrigin: env.CORS_ORIGIN,
-    trustProxy: /^\d+$/.test(env.TRUST_PROXY) ? Number(env.TRUST_PROXY) : env.TRUST_PROXY,
+    trustProxy: trustProxy === undefined ? (onPlatform ? 1 : 'loopback') : /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy,
     serveClient: env.SERVE_CLIENT ?? env.NODE_ENV === 'production',
     clientDist: path.resolve(SERVER_ROOT, env.CLIENT_DIST),
     ai: {
