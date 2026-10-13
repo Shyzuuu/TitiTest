@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Top 3 Burger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Rubik:wght@400;600;800&display=swap">
+<style>
+  /* Layout : plateau de jeu télévisé, podium 2-1-3 puis balance à l'échelle */
+  :root {
+    --bg: #fff3dc; --surface: #ffffff; --fg: #2a1606; --muted: #7c5a3a;
+    --ketchup: #c8261b; --mustard: #f2b705; --silver: #b9c2cc; --bronze: #c97a3d;
+    --track: #f1dfc2;
+    --display: "Bowlby One", "Arial Black", Impact, sans-serif;
+    --body: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1209; --surface: #2a1c10; --fg: #fbecd6; --muted: #c9a883;
+      --ketchup: #ff5a45; --track: #3b2918; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1209; --surface: #2a1c10; --fg: #fbecd6; --muted: #c9a883;
+    --ketchup: #ff5a45; --track: #3b2918; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.5;
+    padding: 32px 16px 40px; overflow-x: hidden;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 40px; }
+
+  header { text-align: center; display: grid; gap: 8px; }
+  .eyebrow { font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: .78rem; color: var(--ketchup); }
+  h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(2.1rem, 8vw, 4.2rem); line-height: 1; text-wrap: balance; }
+  h1 em { font-style: normal; color: var(--ketchup); }
+  .sub { margin: 0; color: var(--muted); }
+
+  .podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 10px; }
+  .place { display: grid; justify-items: center; text-align: center; gap: 4px; min-width: 0; }
+  .p1 { order: 2; } .p2 { order: 1; } .p3 { order: 3; }
+  .avatar { font-size: clamp(3rem, 12vw, 5rem); line-height: 1; animation: bounce 2.4s ease-in-out infinite; }
+  .p1 .avatar { font-size: clamp(4rem, 16vw, 7rem); animation-delay: -.8s; }
+  .p3 .avatar { animation-delay: -1.6s; }
+  .name { font-weight: 800; font-size: clamp(.9rem, 3.4vw, 1.25rem); line-height: 1.2; }
+  .kg { font-family: var(--display); font-size: clamp(1.2rem, 5vw, 2.2rem); line-height: 1.1; color: var(--ketchup); font-variant-numeric: tabular-nums; }
+  .kg small { font-family: var(--body); font-weight: 800; font-size: .5em; margin-left: 2px; }
+  .step {
+    width: 100%; margin-top: 8px; border-radius: 12px 12px 0 0; color: #2a1606;
+    font-family: var(--display); font-size: clamp(2rem, 9vw, 3.6rem);
+    display: flex; justify-content: center; padding-top: 6px;
+    box-shadow: inset 0 -10px 0 rgba(0,0,0,.14);
+  }
+  .p1 .step { height: 210px; background: var(--mustard); }
+  .p2 .step { height: 150px; background: var(--silver); }
+  .p3 .step { height: 105px; background: var(--bronze); }
+
+  section h2 { margin: 0 0 14px; font-family: var(--display); font-weight: 400; font-size: 1.5rem; }
+  .scale { background: var(--surface); border-radius: 18px; padding: 20px; display: grid; gap: 16px; }
+  .row { display: grid; grid-template-columns: minmax(0, 9rem) 1fr; gap: 12px; align-items: center; }
+  .row span { font-weight: 600; min-width: 0; }
+  .bar { height: 30px; background: var(--track); border-radius: 999px; overflow: hidden; }
+  .fill {
+    height: 100%; width: var(--w); border-radius: 999px; background: var(--c);
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 10px;
+    font-weight: 800; font-size: .85rem; color: #2a1606; font-variant-numeric: tabular-nums; white-space: nowrap;
+    animation: grow 1.2s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .note { margin: 0; color: var(--muted); font-size: .9rem; }
+
+  .cards { display: grid; gap: 12px; }
+  .card { background: var(--surface); border-radius: 18px; padding: 18px; display: grid; grid-template-columns: 52px 1fr; gap: 14px; align-items: start; }
+  .rank { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-size: 1.4rem; color: #2a1606; }
+  .card > div:last-child { min-width: 0; }
+  .card h3 { margin: 0; font-size: 1.15rem; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+  .card h3 b { color: var(--ketchup); font-variant-numeric: tabular-nums; }
+  .card p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+
+  footer { text-align: center; color: var(--muted); font-size: .82rem; }
+
+  @keyframes bounce { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+  @keyframes grow { from { width: 6% } }
+  @media (prefers-reduced-motion: reduce) { .avatar, .fill { animation: none; } }
+  @media (max-width: 480px) { .row { grid-template-columns: 1fr; gap: 6px; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Classement mondial 2026</div>
+    <h1>Les 3 plus <em>gros</em> du monde</h1>
+    <p class="sub">Le podium officiel, et complètement inventé, des champions du burger.</p>
+  </header>
+
+  <section class="podium" aria-label="Podium">
+    <div class="place p2">
+      <div class="avatar" aria-hidden="true">🧔</div>
+      <div class="name">Monsieur Big Fat</div>
+      <div class="kg">1 454<small>kg</small></div>
+      <div class="step">2</div>
+    </div>
+    <div class="place p1">
+      <div class="avatar" aria-hidden="true">🍔</div>
+      <div class="name">Burger Man Pro</div>
+      <div class="kg">6 767<small>kg</small></div>
+      <div class="step">1</div>
+    </div>
+    <div class="place p3">
+      <div class="avatar" aria-hidden="true">👩</div>
+      <div class="name">Alison Burger</div>
+      <div class="kg">1 200<small>kg</small></div>
+      <div class="step">3</div>
+    </div>
+  </section>
+
+  <section aria-label="La balance">
+    <h2>Sur la balance</h2>
+    <div class="scale">
+      <!-- Largeurs proportionnelles au record de 6 767 kg -->
+      <div class="row"><span>Burger Man Pro</span><div class="bar"><div class="fill" style="--w:100%;--c:var(--mustard)">6 767 kg</div></div></div>
+      <div class="row"><span>Monsieur Big Fat</span><div class="bar"><div class="fill" style="--w:21.5%;--c:var(--silver)">1 454 kg</div></div></div>
+      <div class="row"><span>Alison Burger</span><div class="bar"><div class="fill" style="--w:17.7%;--c:var(--bronze)">1 200 kg</div></div></div>
+      <p class="note">Burger Man Pro pèse plus que les deux autres réunis, et de loin : 6 767 kg contre 2 654 kg, soit autant qu'un éléphant d'Afrique adulte.</p>
+    </div>
+  </section>
+
+  <section class="cards" aria-label="Fiches des champions">
+    <article class="card">
+      <div class="rank" style="background:var(--mustard)">1</div>
+      <div>
+        <h3>Burger Man Pro <b>6 767 kg</b></h3>
+        <p>Légende vivante. Son dernier burger était si grand qu'il a fallu un permis de construire.</p>
+      </div>
+    </article>
+    <article class="card">
+      <div class="rank" style="background:var(--silver)">2</div>
+      <div>
+        <h3>Monsieur Big Fat <b>1 454 kg</b></h3>
+        <p>Spécialiste du bacon. Il finit un menu XXL avant que les frites refroidissent.</p>
+      </div>
+    </article>
+    <article class="card">
+      <div class="rank" style="background:var(--bronze)">3</div>
+      <div>
+        <h3>Alison Burger <b>1 200 kg</b></h3>
+        <p>Elle porte le burger dans son nom, et elle le mérite. Personne ne la bat au milkshake.</p>
+      </div>
+    </article>
+  </section>
+
+  <footer>Personnages fictifs, classement pour rire.</footer>
+</div>
+</body>
+</html>
