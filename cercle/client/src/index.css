@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Jetons de couleur (triplets RGB) : un seul endroit pour les thèmes sombre et clair. */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: 11 13 20;
+  --panel: 17 20 30;
+  --raised: 26 30 44;
+  --line: 40 45 63;
+  --ink: 232 234 242;
+  --muted: 152 158 180;
+  --faint: 98 104 128;
+  --accent: 129 140 248;
+  --accent-ink: 12 14 26;
+  --mine: 99 102 241;
+  --mine-ink: 255 255 255;
+  --theirs: 30 35 51;
+  --ok: 52 211 153;
+  --warn: 251 191 36;
+  --danger: 248 113 113;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: 243 244 248;
+  --panel: 255 255 255;
+  --raised: 236 238 245;
+  --line: 222 225 235;
+  --ink: 22 25 37;
+  --muted: 92 99 122;
+  --faint: 140 146 168;
+  --accent: 79 70 229;
+  --accent-ink: 255 255 255;
+  --mine: 79 70 229;
+  --mine-ink: 255 255 255;
+  --theirs: 255 255 255;
+  --ok: 5 150 105;
+  --warn: 217 119 6;
+  --danger: 220 38 38;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-ink antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hauteur réelle de la zone visible sur mobile (barre d'adresse et clavier compris). */
+.h-app {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line)) transparent;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-accent-ink hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn text-muted hover:bg-raised hover:text-ink;
+  }
+  .btn-outline {
+    @apply btn border border-line text-ink hover:bg-raised;
+  }
+  .btn-danger {
+    @apply btn bg-danger/15 text-danger hover:bg-danger/25;
+  }
+  .icon-btn {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-raised hover:text-ink
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-raised/60 px-3 py-2 text-sm text-ink placeholder:text-faint
+      focus:border-accent/70 focus:outline-none focus:ring-2 focus:ring-accent/30;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-panel;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full bg-raised px-2.5 py-1 text-xs text-muted;
+  }
+}
