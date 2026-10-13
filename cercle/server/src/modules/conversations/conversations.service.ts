@@ -139,6 +139,8 @@ export class ConversationService {
       );
       this.ctx.notifications.markConversationRead(userId, conversationId);
       this.ctx.bus.publish(userId, 'messages.read', { conversationId, messageIds: ids, readAt: now });
+      // La lecture est partagée avec la boîte mail : ses compteurs changent aussi.
+      this.ctx.bus.publish(userId, 'mailbox.changed', { reason: 'read', counts: this.ctx.mailbox.counts(userId) });
       this.publishSummary(userId, conversationId);
       return { updated: ids.length };
     });

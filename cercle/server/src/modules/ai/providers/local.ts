@@ -44,6 +44,13 @@ function voiceOf(ctx: GenerationContext): Voice {
 
 const lastOf = <T,>(items: T[]) => items[items.length - 1];
 
+/** Respecte le nombre de messages autorisé sans perdre de contenu : l'excédent rejoint le dernier message. */
+function fitParts(parts: string[], maxParts: number): string[] {
+  const max = Math.max(1, maxParts);
+  if (parts.length <= max) return parts;
+  return [...parts.slice(0, max - 1), parts.slice(max - 1).join(' ')];
+}
+
 function pendingUserMessages(history: HistoryItem[]): HistoryItem[] {
   const out: HistoryItem[] = [];
   for (let i = history.length - 1; i >= 0; i--) {
@@ -89,7 +96,7 @@ export class LocalProvider implements AiProvider {
       parts = this.compose(ctx);
       if (!parts.some((p) => recent.has(normalize(p)))) break;
     }
-    return { parts: parts.slice(0, Math.max(1, ctx.maxParts)), providerId: this.id, model: this.model, fallback: false };
+    return { parts: fitParts(parts, ctx.maxParts), providerId: this.id, model: this.model, fallback: false };
   }
 
   private compose(ctx: GenerationContext): string[] {
@@ -134,7 +141,8 @@ export class LocalProvider implements AiProvider {
     const v = voiceOf(ctx);
     const pending = pendingUserMessages(ctx.history);
     const text = normalize(pending.map((p) => p.content).join(' ') || lastOf(ctx.history)?.content || '');
-    const name = ctx.userName;
+    // Un nom d'affichage générique (« Moi ») ne s'utilise pas dans une salutation.
+    const name = /^(moi|me|user|utilisateur)$/i.test(ctx.userName.trim()) ? '' : ctx.userName;
     const parts: string[] = [];
 
     const mentioned = ctx.character.interests.find((i) => text.includes(normalize(i)));
@@ -152,7 +160,9 @@ export class LocalProvider implements AiProvider {
       parts.push(pick(this.rng, ['Ah, te revoilà !', 'Oh, déjà de retour !', 'Re ! Ça a été rapide.']) + this.emoji(v));
     } else if (greets && !asksHowAreYou) {
       parts.push(
-        pick(this.rng, [`Hey ${name} !`, `Coucou ${name} !`, `Salut ${name} !`, `Oh, ${name} !`]) + this.emoji(v, 0.6),
+        (name
+          ? pick(this.rng, [`Hey ${name} !`, `Coucou ${name} !`, `Salut ${name} !`, `Oh, ${name} !`])
+          : pick(this.rng, ['Hey !', 'Coucou !', 'Salut toi !', 'Oh, salut !'])) + this.emoji(v, 0.6),
       );
     }
     if (asksHowAreYou) {

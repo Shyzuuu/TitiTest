@@ -1,7 +1,9 @@
-import 'dotenv/config';
+import { loadEnvFiles } from './env.js';
 import { createContext, disposeContext } from './bootstrap.js';
 import { createAppServer } from './app.js';
 import { loadConfig } from './config.js';
+
+loadEnvFiles();
 
 async function main() {
   const config = loadConfig();

@@ -1,9 +1,11 @@
-import 'dotenv/config';
+import { loadEnvFiles } from './env.js';
 import { loadConfig } from './config.js';
 import { Database } from './db/database.js';
 import { migrate } from './db/migrations.js';
 import { createContext, disposeContext } from './bootstrap.js';
 import { resetDemoData } from './db/seed.js';
+
+loadEnvFiles();
 
 const command = process.argv[2];
 

@@ -45,6 +45,8 @@ export function createAppServer(ctx: AppContext): AppServer {
           connectSrc: ["'self'", 'ws:', 'wss:'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           scriptSrc: ["'self'"],
+          // Uniquement derrière HTTPS : en HTTP (réseau local, smartphone) la directive bloquerait les ressources.
+          upgradeInsecureRequests: ctx.config.auth.cookieSecure ? [] : null,
         },
       },
       crossOriginEmbedderPolicy: false,

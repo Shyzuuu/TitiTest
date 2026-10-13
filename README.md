@@ -1,5 +1,15 @@
 # TitiTest
 
+## Cercle — messagerie multi-personnages
+
+Application web complète (React + Node.js + SQLite + Socket.IO) : conversations indépendantes avec des personnages fictifs qui écrivent d'eux-mêmes, réponses à ses propres messages, brouillons par conversation, boîte mail virtuelle, notifications, mémoire par personnage et IA (Claude ou simulation locale) capable de répondre à votre place après un délai sans jamais doubler une réponse manuelle.
+
+Documentation, installation et tests : [`cercle/README.md`](cercle/README.md).
+
+```bash
+cd cercle && npm install && npm run dev   # http://127.0.0.1:5173 — identifiant « moi », mot de passe « cercle »
+```
+
 ## TitiSnake
 
 Snake en un seul fichier (`index.html`), sans dépendance, jouable au clavier et au tactile.
