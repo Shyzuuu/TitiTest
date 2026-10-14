@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1218">
+<meta name="description" content="Prototype autonome inspiré de Subway Surfers : ralenti, enregistrement et rejeu déterministe.">
+<title>Subway Lab</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="public/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="src/ui/styles.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <strong class="brand">SUBWAY LAB <span>Infinite</span></strong>
+    <span id="top-state" class="chip">Initialisation</span>
+    <span id="top-rec" class="chip rec-chip">REC —</span>
+    <span id="top-replay" class="chip">Rejeu —</span>
+    <span id="top-speed" class="chip speed-chip">1,00×</span>
+    <span class="spacer"></span>
+    <button id="btn-settings" type="button" class="icon" title="Réglages" aria-label="Réglages">⚙</button>
+    <button id="btn-collapse" type="button" class="icon" title="Afficher / masquer le panneau" aria-label="Afficher ou masquer le panneau">☰</button>
+  </header>
+
+  <main id="stage" class="stage">
+    <canvas id="game" aria-label="Zone de jeu"></canvas>
+    <div class="hud" aria-live="off">
+      <div class="hud-left">
+        <div class="hud-score" id="hud-score">0</div>
+        <div class="hud-small"><span class="coin-dot"></span><span id="hud-coins">0</span> · <span id="hud-distance">0 m</span></div>
+      </div>
+      <div class="hud-right">
+        <div id="hud-speed" class="hud-speed">1,00×</div>
+        <div id="hud-rec" class="hud-rec" hidden>● REC</div>
+        <div id="hud-replay" class="hud-replay" hidden>⟲ REJEU</div>
+      </div>
+      <div class="hud-progress"><div id="hud-progress"></div></div>
+    </div>
+    <div id="overlay" class="overlay" hidden>
+      <div class="overlay-card">
+        <h2 id="overlay-title"></h2>
+        <p id="overlay-text"></p>
+        <div id="overlay-buttons" class="btn-row center"></div>
+      </div>
+    </div>
+    <div id="touch-controls" class="touch-controls" hidden>
+      <button type="button" data-action="LANE_LEFT" aria-label="Voie gauche">◀</button>
+      <button type="button" data-action="JUMP" aria-label="Saut">▲</button>
+      <button type="button" data-action="SLIDE" aria-label="Glissade">▼</button>
+      <button type="button" data-action="LANE_RIGHT" aria-label="Voie droite">▶</button>
+    </div>
+    <button id="fab" class="fab" type="button" aria-controls="panel" aria-expanded="false">LAB</button>
+  </main>
+
+  <aside id="panel" class="panel" aria-label="Menu du laboratoire">
+    <nav id="tabs" class="tabs" role="tablist"></nav>
+    <div id="panel-body" class="panel-body"></div>
+  </aside>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<dialog id="dialog">
+  <form method="dialog">
+    <p id="dialog-text"></p>
+    <input id="dialog-input" type="text" maxlength="80">
+    <div class="btn-row end">
+      <button value="cancel" type="submit">Annuler</button>
+      <button value="ok" type="submit" class="primary">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<noscript>JavaScript est nécessaire pour lancer le laboratoire.</noscript>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

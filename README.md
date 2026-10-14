@@ -10,6 +10,16 @@ Documentation, installation et tests : [`cercle/README.md`](cercle/README.md).
 cd cercle && npm install && npm run dev   # http://127.0.0.1:5173 — identifiant « moi », mot de passe « cercle »
 ```
 
+## Subway Surfers Infinite Lab
+
+Prototype autonome jouable sur ordinateur et Android (navigateur) inspiré de Subway Surfers : pièces et clés de test illimitées, ralenti 0,10× → 1,00× à chaud, enregistrement intégral d'une run et rejeu déterministe vérifié (71 tests + test navigateur).
+
+Documentation, architecture et rapport de validation : [`subway-lab/README.md`](subway-lab/README.md).
+
+```bash
+cd subway-lab && npm start   # http://localhost:8080 — aucune dépendance
+```
+
 ## TitiSnake
 
 Snake en un seul fichier (`index.html`), sans dépendance, jouable au clavier et au tactile.

@@ -1,0 +1,15 @@
+{
+  "name": "Subway Surfers Infinite Lab",
+  "short_name": "Subway Lab",
+  "description": "Prototype autonome : ralenti, enregistrement et rejeu déterministe de runs.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0f1218",
+  "theme_color": "#0f1218",
+  "lang": "fr",
+  "icons": [
+    { "src": "public/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
