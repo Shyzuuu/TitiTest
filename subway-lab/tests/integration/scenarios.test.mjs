@@ -90,7 +90,7 @@ test('Scénario D — ressources illimitées : achats, persistance après redém
   const storage = new MemoryStorage();
   const a = makeLab({ storage }).lab;
   a.resources.enableUnlimited('both');
-  for (const id of ['UPGRADE_MAGNET', 'UPGRADE_DOUBLE', 'START_MAGNET', 'SKIN_NEON', 'SKIN_GOLD']) assert.equal(a.shop.buy(id).ok, true, id);
+  for (const id of ['UPGRADE_MAGNET', 'UPGRADE_DOUBLE', 'START_MAGNET', 'CHAR_NEON', 'CHAR_GOLD', 'HOVERBOARD_5']) assert.equal(a.shop.buy(id).ok, true, id);
   a.startRun({ seed: 5 });
   a.world.player.crashed = true;
   for (let i = 0; i < 6; i++) {
@@ -104,7 +104,8 @@ test('Scénario D — ressources illimitées : achats, persistance après redém
   assert.equal(b.resources.mode('coins'), 'UNLIMITED');
   assert.equal(b.resources.mode('keys'), 'UNLIMITED');
   assert.equal(b.shop.profile.upgrades.MAGNET, 1);
-  assert.ok(b.shop.profile.skins.includes('GOLD'));
+  assert.ok(b.shop.profile.characters.includes('GOLD'));
+  assert.equal(b.shop.profile.hoverboards, 5);
 });
 
 test('Scénario E — erreurs : fichier invalide, double REC, rejeu pendant REC, panne de sauvegarde', () => {

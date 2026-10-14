@@ -29,6 +29,8 @@ const isFiniteNum = (/** @type {unknown} */ v) => typeof v === 'number' && Numbe
 const isBool = (/** @type {unknown} */ v) => typeof v === 'boolean';
 const isStr = (/** @type {unknown} */ v) => typeof v === 'string' && v.length <= 200;
 const oneOf = (/** @type {readonly unknown[]} */ values) => (/** @type {unknown} */ v) => values.includes(v);
+const POWERUPS = ['MAGNET', 'DOUBLE', 'SNEAKERS', 'JETPACK'];
+const PLAYER_STATES = ['RUNNING', 'JUMPING', 'SLIDING', 'FLYING', 'CRASHED'];
 const speed = (/** @type {unknown} */ v) => isFiniteNum(v) && /** @type {number} */ (v) >= 0.1 && /** @type {number} */ (v) <= 1;
 
 /**
@@ -47,11 +49,15 @@ export const EVENT_TYPES = Object.freeze({
   LANE_RIGHT: { category: 'action', label: 'Voie droite', fields: {} },
   JUMP: { category: 'action', label: 'Saut', fields: {} },
   SLIDE: { category: 'action', label: 'Glissade', fields: {} },
+  HOVERBOARD: { category: 'action', label: 'Hoverboard', fields: {} },
   REVIVE: { category: 'action', label: 'Résurrection', fields: {} },
   COIN: { category: 'outcome', label: 'Pièce', fields: { id: isNonNegInt, n: isNonNegInt } },
   KEY: { category: 'outcome', label: 'Clé', fields: { id: isNonNegInt, n: isNonNegInt } },
-  POWERUP_START: { category: 'outcome', label: 'Début de bonus', fields: { kind: oneOf(['MAGNET', 'DOUBLE', 'SNEAKERS']), dur: isNonNegInt } },
-  POWERUP_END: { category: 'outcome', label: 'Fin de bonus', fields: { kind: oneOf(['MAGNET', 'DOUBLE', 'SNEAKERS']) } },
+  BOX: { category: 'outcome', label: 'Boîte mystère', fields: { id: isNonNegInt, reward: oneOf(['COINS', 'KEY']), amount: isNonNegInt } },
+  POWERUP_START: { category: 'outcome', label: 'Début de bonus', fields: { kind: oneOf(POWERUPS), dur: isNonNegInt } },
+  POWERUP_END: { category: 'outcome', label: 'Fin de bonus', fields: { kind: oneOf(POWERUPS) } },
+  HOVERBOARD_START: { category: 'outcome', label: 'Hoverboard activé', fields: { dur: isNonNegInt, left: isNonNegInt } },
+  HOVERBOARD_END: { category: 'outcome', label: 'Fin du hoverboard', fields: { reason: oneOf(['expired', 'crash']) } },
   COLLISION: { category: 'outcome', label: 'Collision', fields: { id: isNonNegInt, kind: oneOf(['LOW', 'HIGH', 'TRAIN']), fatal: isBool, side: isBool } },
   STUMBLE: { category: 'outcome', label: 'Trébuchement', fields: { id: isNonNegInt, kind: oneOf(['LOW', 'HIGH', 'TRAIN']) } },
   SCORE_CHANGE: { category: 'outcome', label: 'Score', fields: { s: isNonNegInt } },
@@ -59,7 +65,7 @@ export const EVENT_TYPES = Object.freeze({
   PLAYER_STATE: {
     category: 'outcome',
     label: 'État du personnage',
-    fields: { from: oneOf(['RUNNING', 'JUMPING', 'SLIDING', 'CRASHED']), to: oneOf(['RUNNING', 'JUMPING', 'SLIDING', 'CRASHED']) },
+    fields: { from: oneOf(PLAYER_STATES), to: oneOf(PLAYER_STATES) },
   },
   CHECKPOINT: {
     category: 'outcome',

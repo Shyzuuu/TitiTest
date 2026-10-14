@@ -4,7 +4,8 @@
  * entre deux pas (alpha) lisse l'affichage au ralenti extrême (0,10× ≈ 6 pas/s).
  */
 
-import { LANE_WIDTH, PLAYER_HEIGHT, PLAYER_SLIDE_HEIGHT, laneX } from '../game/constants.js';
+import { characterById } from '../game/characters.js';
+import { LANE_WIDTH, PLAYER_HEIGHT, PLAYER_SLIDE_HEIGHT, STUMBLE_TICKS, TRAIN_TOP, laneX } from '../game/constants.js';
 
 const VIEW_DISTANCE = 150;
 const CAMERA_BACK = 7.5;
@@ -13,16 +14,13 @@ const WALL_X = TRACK_HALF + 1.6;
 const SEGMENT = 12;
 
 const TRAIN_COLORS = ['#c0392b', '#2471a3', '#1e8449', '#b9770e', '#7d3c98'];
-const SKIN_COLORS = {
-  DEFAULT: { body: '#ff8a3d', head: '#ffd2a6', cap: '#2e86de' },
-  NEON: { body: '#39ff9f', head: '#ffd2a6', cap: '#ff2fd0' },
-  GOLD: { body: '#f4c542', head: '#ffe0b3', cap: '#8a6d00' },
-};
 const COLLECTIBLE_STYLE = {
   KEY: { fill: '#4fc3f7', label: 'K' },
   MAGNET: { fill: '#e74c3c', label: 'M' },
   DOUBLE: { fill: '#9b59b6', label: '×2' },
   SNEAKERS: { fill: '#2ecc71', label: 'S' },
+  JETPACK: { fill: '#e67e22', label: 'J' },
+  BOX: { fill: '#8e5a2b', label: '?' },
 };
 
 /**
@@ -43,6 +41,21 @@ function hash01(n) {
  * @param {number} t
  */
 const lerp = (a, b, t) => a + (b - a) * t;
+
+/**
+ * Distance visuelle des poursuivants derrière le joueur, ou null s'ils sont hors champ.
+ * @param {import('../game/GameWorld.js').GameWorld} world
+ * @returns {number | null}
+ */
+function chaseDistance(world) {
+  const p = world.player;
+  if (p.crashed) return 1.6;
+  if (world.powerups.JETPACK > 0 || p.y > 1.5) return null;
+  // Restent entre le joueur et la caméra sans la toucher (caméra 7,5 à 9 m derrière).
+  if (p.stumbleTicks > 0) return 2.2 + (1 - p.stumbleTicks / STUMBLE_TICKS) * 2;
+  if (world.tick < 150) return 2 + world.tick / 75;
+  return null;
+}
 
 /**
  * @param {{ z: number }} a
@@ -117,7 +130,8 @@ export class Renderer {
 
     // Portrait : caméra plus haute et focale plus longue, sinon l'horizon tombe très bas et la piste est minuscule.
     this.focal = portrait ? W * 1.1 : Math.min(H * 0.95, W * 0.7);
-    this.camY = portrait ? 7 : 3.6;
+    // La caméra suit la hauteur du joueur (toits, jetpack) avec un léger retard visuel.
+    this.camY = (portrait ? 7 : 3.6) + py * 0.85;
     const back = portrait ? CAMERA_BACK + 1.5 : CAMERA_BACK;
     this.camZ = pz - back;
     this.camX = px * 0.55;
@@ -140,15 +154,18 @@ export class Renderer {
       it.ref = ref;
     };
     for (const o of world.obstacles) {
-      if (o.z > far) break;
+      if (o.z > far) continue;
       if (o.z + o.len < this.camZ + 0.4) continue;
-      push(Math.max(o.z, this.camZ + 0.4), 0, o);
+      // Rampe ou toit sous le joueur : dessiné avant lui (clé de tri = extrémité la plus lointaine).
+      const under = o.z <= pz && o.z + o.len >= pz && Math.abs(px - laneX(o.lane)) < 1.4;
+      push(under ? o.z + o.len + 0.01 : Math.max(o.z, this.camZ + 0.4), 0, o);
     }
     for (const c of world.collectibles) {
       if (c.z > far || c.z < this.camZ + 0.5) continue;
       push(c.z, 1, c);
     }
     push(pz, 2, null);
+    if (chaseDistance(world) !== null) push(pz - (chaseDistance(world) ?? 0), 3, null);
     const list = this.sorted;
     list.length = n;
     for (let i = 0; i < n; i++) list[i] = pool[i];
@@ -157,7 +174,8 @@ export class Renderer {
     for (const it of list) {
       if (it.kind === 0) this.drawObstacle(it.ref);
       else if (it.kind === 1) this.drawCollectible(it.ref);
-      else this.drawPlayer(world, px, py, pz);
+      else if (it.kind === 2) this.drawPlayer(world, px, py, pz);
+      else this.drawChasers(world, px, pz - (chaseDistance(world) ?? 0));
     }
     this.drawFog();
   }
@@ -237,12 +255,37 @@ export class Renderer {
     const x1 = laneX(o.lane) + 1.0;
     const z0 = Math.max(o.z, this.camZ + 0.4);
     const z1 = o.z + o.len;
+    if (o.kind === 'RAMP') {
+      // Rampe métallique : surface inclinée de 0 à la hauteur du toit, flancs triangulaires.
+      const h0 = (TRAIN_TOP * (z0 - o.z)) / o.len;
+      if (this.camX < x0) this.quad(x0, 0, z0, x0, h0, z0, x0, TRAIN_TOP, z1, x0, 0, z1, '#5d6670');
+      else if (this.camX > x1) this.quad(x1, 0, z0, x1, h0, z0, x1, TRAIN_TOP, z1, x1, 0, z1, '#5d6670');
+      this.quad(x0, h0, z0, x1, h0, z0, x1, TRAIN_TOP, z1, x0, TRAIN_TOP, z1, '#9aa3ad');
+      for (let k = 1; k < 6; k++) {
+        const zk = o.z + (o.len * k) / 6;
+        if (zk <= z0) continue;
+        const hk = (TRAIN_TOP * k) / 6;
+        this.quad(x0, hk, zk, x1, hk, zk, x1, hk + 0.05, zk + 0.15, x0, hk + 0.05, zk + 0.15, '#6c757f');
+      }
+      return;
+    }
     if (o.kind === 'TRAIN') {
       const color = TRAIN_COLORS[o.id % TRAIN_COLORS.length];
-      this.box(x0, 0, z0, x1, 3.4, z1, color, '#2c3e50');
-      // Bande de fenêtres sur la face avant
+      this.box(x0, 0, z0, x1, TRAIN_TOP, z1, color, null);
+      // Fenêtres le long du flanc visible
+      const side = this.camX < x0 ? x0 - 0.01 : this.camX > x1 ? x1 + 0.01 : null;
+      if (side !== null) {
+        for (let wz = o.z + 1.5; wz < z1 - 1; wz += 3) {
+          if (wz < z0) continue;
+          this.quad(side, 1.9, wz, side, 2.8, wz, side, 2.8, wz + 1.8, side, 1.9, wz + 1.8, '#d6eaf8');
+        }
+        this.quad(side, 0.5, z0, side, 0.75, z0, side, 0.75, z1, side, 0.5, z1, shadeColor(color, -0.35));
+      }
       if (z0 === o.z) {
-        this.quad(x0 + 0.25, 2.0, z0 - 0.01, x1 - 0.25, 2.0, z0 - 0.01, x1 - 0.25, 2.9, z0 - 0.01, x0 + 0.25, 2.9, z0 - 0.01, '#d6eaf8');
+        const zf = z0 - 0.01;
+        this.quad(x0 + 0.25, 2.0, zf, x1 - 0.25, 2.0, zf, x1 - 0.25, 2.9, zf, x0 + 0.25, 2.9, zf, '#d6eaf8');
+        this.quad(x0 + 0.3, 0.45, zf, x0 + 0.6, 0.45, zf, x0 + 0.6, 0.75, zf, x0 + 0.3, 0.75, zf, '#ffe9a8');
+        this.quad(x1 - 0.6, 0.45, zf, x1 - 0.3, 0.45, zf, x1 - 0.3, 0.75, zf, x1 - 0.6, 0.75, zf, '#ffe9a8');
       }
     } else if (o.kind === 'LOW') {
       this.box(x0, 0, z0, x1, 1.0, z1, '#e74c3c', '#fdfefe');
@@ -284,6 +327,7 @@ export class Renderer {
   }
 
   /**
+   * Personnage articulé (jambes animées par la distance parcourue, donc figées en pause).
    * @param {import('../game/GameWorld.js').GameWorld} world
    * @param {number} px
    * @param {number} py
@@ -292,28 +336,66 @@ export class Renderer {
   drawPlayer(world, px, py, pz) {
     const p = world.player;
     const sliding = p.slideTicks > 0;
+    const flying = world.powerups.JETPACK > 0;
     const h = sliding ? PLAYER_SLIDE_HEIGHT : PLAYER_HEIGHT;
-    const skin = SKIN_COLORS[/** @type {'DEFAULT'} */ (world.config.skin)] ?? SKIN_COLORS.DEFAULT;
+    const ch = characterById(world.config.skin);
+    const c = ch.colors;
     const { ctx } = this;
-    // Ombre au sol
-    const sh = this.project(px, 0, pz);
-    if (sh) {
+    if (p.invulnerableTicks > 0 && Math.floor(this.time / 90) % 2 === 0) return;
+    const ground = p.airborne ? 0 : py;
+    const sh = this.project(px, ground, pz);
+    if (sh && !flying) {
       ctx.fillStyle = 'rgba(0,0,0,0.28)';
       ctx.beginPath();
       ctx.ellipse(sh[0], sh[1], 0.5 * sh[2], 0.16 * sh[2], 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    const body = p.crashed ? '#7f8c8d' : skin.body;
-    const torsoTop = py + h * 0.72;
-    this.box(px - 0.35, py, pz - 0.3, px + 0.35, torsoTop, pz + 0.3, body, null);
-    const head = this.project(px, py + h * 0.86, pz);
+    let base = py;
+    if (world.hoverboardTicks > 0) {
+      // Planche flottante sous les pieds
+      base = py + 0.25;
+      const glow = Math.floor(this.time / 150) % 2 ? '#00e5ff' : '#00b8d4';
+      this.box(px - 0.45, py + 0.1, pz - 0.75, px + 0.45, py + 0.22, pz + 0.75, '#ff4fa3', null);
+      this.quad(px - 0.45, py + 0.09, pz - 0.75, px + 0.45, py + 0.09, pz - 0.75, px + 0.45, py + 0.09, pz + 0.75, px - 0.45, py + 0.09, pz + 0.75, glow);
+    }
+    const body = p.crashed ? '#7f8c8d' : c.body;
+    const legH = sliding ? 0.25 : h * 0.42;
+    const phase = Math.sin(pz * 1.7);
+    const stride = p.airborne || sliding || p.crashed ? 0 : 0.28 * phase;
+    // Jambes (alternées en z)
+    this.box(px - 0.3, base, pz - 0.12 + stride, px - 0.04, base + legH, pz + 0.12 + stride, c.legs, null);
+    this.box(px + 0.04, base, pz - 0.12 - stride, px + 0.3, base + legH, pz + 0.12 - stride, c.legs, null);
+    const torso0 = base + legH;
+    const torso1 = base + h * 0.78;
+    if (flying) this.box(px - 0.28, torso0 + 0.05, pz - 0.55, px + 0.28, torso1, pz - 0.3, '#7f8c8d', null);
+    this.box(px - 0.36, torso0, pz - 0.25, px + 0.36, torso1, pz + 0.25, body, null);
+    // Bras
+    this.box(px - 0.5, torso0 + 0.1, pz - 0.1 - stride, px - 0.36, torso1 - 0.05, pz + 0.1 - stride, body, null);
+    this.box(px + 0.36, torso0 + 0.1, pz - 0.1 + stride, px + 0.5, torso1 - 0.05, pz + 0.1 + stride, body, null);
+    const head = this.project(px, base + h * 0.9, pz);
     if (head) {
-      ctx.fillStyle = skin.head;
+      const r = 0.24 * head[2];
+      ctx.fillStyle = c.head;
       ctx.beginPath();
-      ctx.arc(head[0], head[1], 0.24 * head[2], 0, Math.PI * 2);
+      ctx.arc(head[0], head[1], r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = skin.cap;
-      ctx.fillRect(head[0] - 0.26 * head[2], head[1] - 0.26 * head[2], 0.52 * head[2], 0.12 * head[2]);
+      ctx.fillStyle = c.hair;
+      ctx.beginPath();
+      ctx.arc(head[0], head[1], r, Math.PI, Math.PI * 2);
+      ctx.fill();
+      this.drawAccessory(ch.accessory, head[0], head[1], r, c.accent);
+    }
+    if (flying) {
+      const fl = this.project(px, torso0 - 0.2, pz - 0.45);
+      if (fl) {
+        ctx.fillStyle = Math.floor(this.time / 80) % 2 ? '#ffb347' : '#ff6b1a';
+        ctx.beginPath();
+        ctx.moveTo(fl[0] - 0.12 * fl[2], fl[1]);
+        ctx.lineTo(fl[0] + 0.12 * fl[2], fl[1]);
+        ctx.lineTo(fl[0], fl[1] + 0.6 * fl[2]);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
     if (world.powerups.MAGNET > 0 && head) {
       ctx.strokeStyle = 'rgba(231,76,60,0.6)';
@@ -322,9 +404,90 @@ export class Renderer {
       ctx.arc(head[0], head[1] + 0.5 * head[2], 1.1 * head[2], 0, Math.PI * 2);
       ctx.stroke();
     }
-    if (p.stumbleTicks > 0 && Math.floor(this.time / 120) % 2 === 0 && head) {
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillRect(head[0] - 0.5 * head[2], head[1] - 0.3 * head[2], head[2], 1.6 * head[2]);
+  }
+
+  /**
+   * @param {string} kind
+   * @param {number} x
+   * @param {number} y
+   * @param {number} r
+   * @param {string} color
+   */
+  drawAccessory(kind, x, y, r, color) {
+    const { ctx } = this;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, r * 0.2);
+    switch (kind) {
+      case 'cap':
+        ctx.fillRect(x - r * 1.05, y - r * 0.95, r * 2.1, r * 0.5);
+        ctx.fillRect(x - r * 0.2, y - r * 0.6, r * 1.6, r * 0.22);
+        break;
+      case 'band':
+        ctx.fillRect(x - r, y - r * 0.35, r * 2, r * 0.25);
+        break;
+      case 'crest':
+        ctx.fillRect(x - r * 0.18, y - r * 1.7, r * 0.36, r * 1.1);
+        break;
+      case 'hood':
+        ctx.beginPath();
+        ctx.arc(x, y, r * 1.2, Math.PI * 0.9, Math.PI * 2.1);
+        ctx.stroke();
+        break;
+      case 'antenna':
+        ctx.fillRect(x - r * 0.06, y - r * 1.8, r * 0.12, r * 0.9);
+        ctx.beginPath();
+        ctx.arc(x, y - r * 1.85, r * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'crown':
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.8, y - r * 0.8);
+        ctx.lineTo(x - r * 0.8, y - r * 1.5);
+        ctx.lineTo(x - r * 0.4, y - r * 1.1);
+        ctx.lineTo(x, y - r * 1.6);
+        ctx.lineTo(x + r * 0.4, y - r * 1.1);
+        ctx.lineTo(x + r * 0.8, y - r * 1.5);
+        ctx.lineTo(x + r * 0.8, y - r * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      default:
+    }
+  }
+
+  /**
+   * Contrôleur et son chien : apparaissent au départ, après un trébuchement et à la capture.
+   * Purement visuel (dérivé de l'état), sans effet sur la simulation.
+   * @param {import('../game/GameWorld.js').GameWorld} world
+   * @param {number} px
+   * @param {number} z
+   */
+  drawChasers(world, px, z) {
+    const x = px * 0.9;
+    // Chien (à gauche du contrôleur)
+    const dx = x - 0.7;
+    const hop = Math.abs(Math.sin(z * 2.2)) * 0.12;
+    this.box(dx - 0.18, 0.25 + hop, z - 0.35, dx + 0.18, 0.6 + hop, z + 0.35, '#a0522d', null);
+    this.box(dx - 0.15, 0.45 + hop, z + 0.3, dx + 0.15, 0.75 + hop, z + 0.6, '#8b4513', null);
+    this.box(dx - 0.14, 0, z - 0.3, dx + 0.14, 0.27 + hop, z + 0.3, '#5c3317', null);
+    // Contrôleur
+    const stride = 0.22 * Math.sin(z * 1.7);
+    this.box(x - 0.28, 0, z - 0.1 + stride, x - 0.04, 0.85, z + 0.12 + stride, '#1c2833', null);
+    this.box(x + 0.04, 0, z - 0.1 - stride, x + 0.28, 0.85, z + 0.12 - stride, '#1c2833', null);
+    this.box(x - 0.42, 0.85, z - 0.28, x + 0.42, 1.65, z + 0.28, '#1f3a93', null);
+    const head = this.project(x, 1.85, z);
+    if (head) {
+      const { ctx } = this;
+      const r = 0.25 * head[2];
+      ctx.fillStyle = '#e0ac69';
+      ctx.beginPath();
+      ctx.arc(head[0], head[1], r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1f3a93';
+      ctx.fillRect(head[0] - r * 1.15, head[1] - r * 1.05, r * 2.3, r * 0.6);
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillRect(head[0] - r * 0.25, head[1] - r * 0.95, r * 0.5, r * 0.35);
     }
   }
 

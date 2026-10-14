@@ -65,6 +65,7 @@ export class LabController {
     /** @type {number | null} */
     this.pendingRestartSeed = null;
     this.worldSettled = true;
+    this.boardsSettled = 0;
     this.followOriginalSpeed = true;
     this.autopilot = false;
 
@@ -153,6 +154,7 @@ export class LabController {
     const s = seed ?? generateSeed();
     this.world = new GameWorld({ seed: s, config: cfg, onEvent: this.onWorldEvent });
     this.worldSettled = false;
+    this.boardsSettled = 0;
     this.globalTick = 0;
     this.pendingInputs.length = 0;
     this.pendingRestartSeed = null;
@@ -552,6 +554,10 @@ export class LabController {
     this.worldSettled = true;
     try {
       this.resources.earn({ coins: this.world.coinsRun, keys: this.world.keysRun });
+      // Les planches persistent à travers un redémarrage (R) : on ne déduit que le delta non encore réglé.
+      const used = this.world.hoverboardsUsed - this.boardsSettled;
+      this.boardsSettled = this.world.hoverboardsUsed;
+      if (used > 0) this.shop.useHoverboards(used);
     } catch (e) {
       this.logError('SAVE', /** @type {Error} */ (e).message);
     }

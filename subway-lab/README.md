@@ -35,7 +35,7 @@ Sur téléphone, le bouton rond **LAB** ouvre le menu du laboratoire par-dessus 
 | Rendu | Canvas 2D, projection perspective manuelle (pseudo-3D) |
 | Simulation | Pas fixe de 1/60 s, RNG `mulberry32` à graine, état entièrement déterministe |
 | Stockage | `localStorage` via un `SaveManager` atomique (temporaire → vérification → sauvegarde `.bak` → remplacement) |
-| Tests | `node:test` (71 tests) + test navigateur Playwright (10 étapes) |
+| Tests | `node:test` (80 tests) + test navigateur Playwright (12 étapes) |
 
 **Pourquoi le web plutôt que Godot / Android natif ?** L'environnement ne contient ni moteur de jeu ni SDK
 Android ; une application web tourne telle quelle dans Chrome Android, s'installe comme une application,
@@ -45,12 +45,15 @@ et se teste automatiquement (Node + Chromium headless). Le déterminisme est gar
 ## 2. Fonctionnalités
 
 - Gameplay : 3 voies, changement de voie, saut, glissade (chute rapide en l'air), barrières basses / hautes,
-  trains, trébuchement latéral, pièces, clés, bonus (aimant, score ×2, super-baskets), score, distance,
-  difficulté progressive, fin de partie, résurrection payée en clés, recommencer.
+  trains, **rampes pour courir sur les toits des trains**, trébuchement latéral avec **contrôleur et chien**
+  à vos trousses, pièces, clés, **boîtes mystère**, bonus (aimant, score ×2, super-baskets, **jetpack**),
+  **hoverboard** (absorbe un crash, 30 s), multiplicateur de score, difficulté progressive, fin de partie,
+  résurrection payée en clés (1, 2, 4, 8…), recommencer.
 - Générateur à graine avec **invariant d'équité** : jamais trois voies bloquées par des trains, toujours une
   voie sûre atteignable sans traverser de train (vérifié sur 60 graines × 6 km).
 - Ressources de test : modes Normal / Illimité / Personnalisé, indépendants pour pièces et clés.
-- Boutique fictive (améliorations, bonus de départ, tenues, résurrection) pour éprouver les ressources.
+- Boutique : 6 personnages originaux (pièces et/ou clés), améliorations des 4 bonus (5 niveaux, prix doublé à
+  chaque niveau), hoverboards (×1, ×5), aimant de départ, boîte mystère, multiplicateur de score payé en clés.
 - Vitesse : préréglages 0,10× / 0,25× / 0,50× / 0,75× / 1,00× et curseur au centième, à chaud.
 - Pause distincte du ralenti.
 - Enregistreur : REC / PAUSE / REPRENDRE / STOP, vidage incrémental, récupération après fermeture brutale.
@@ -97,6 +100,7 @@ Le serveur fourni ne sert que les fichiers de l'application (pas les tests) et �
 | Voie droite | → ou D | glisser vers la droite |
 | Saut | ↑, Espace ou W | glisser vers le haut |
 | Glissade | ↓ ou S | glisser vers le bas |
+| Hoverboard | H | double appui sur l'écran (ou bouton BOARD) |
 | Pause / reprise | Échap ou P | bouton LAB → Jeu → Pause |
 | Recommencer | R (désactivé pendant un rejeu) | — |
 
@@ -130,7 +134,8 @@ file, ni enregistrée — et comptée dans le diagnostic (« Entrées ignorées 
 d'action fantôme.
 
 Événements capturés : `RUN_START`, `RUN_END`, `PAUSE`, `RESUME`, `SPEED_CHANGE`, `LANE_LEFT`, `LANE_RIGHT`,
-`JUMP`, `SLIDE`, `REVIVE`, `RESTART`, `COIN`, `KEY`, `POWERUP_START`, `POWERUP_END`, `COLLISION`, `STUMBLE`,
+`JUMP`, `SLIDE`, `HOVERBOARD`, `REVIVE`, `RESTART`, `COIN`, `KEY`, `BOX`, `POWERUP_START`, `POWERUP_END`,
+`HOVERBOARD_START`, `HOVERBOARD_END`, `COLLISION`, `STUMBLE`,
 `SCORE_CHANGE` (tous les 1 000 points), `DISTANCE_MILESTONE` (tous les 100 m), `PLAYER_STATE`, `CHECKPOINT`
 (toutes les 2 s simulées : position, score, distance, pièces, clés, empreinte exacte de l'état), `SIM_ERROR`.
 
@@ -146,8 +151,9 @@ d'action fantôme.
   "updatedAt": "2026-10-14T20:24:51.040Z",
   "meta": { "endTick": 3660, "realDurationMs": 20504, "simDurationS": 61, "eventCount": 185,
             "score": 1522, "distance": 772.1, "coins": 40, "keys": 0, "recovered": false },
-  "setup": { "seed": 12345, "physicsVersion": 1, "initialSpeed": 1, "initialHash": "1a2b3c4d",
-             "config": { "upgrades": { "MAGNET": 0, "DOUBLE": 0, "SNEAKERS": 0 }, "startBonus": null, "skin": "DEFAULT" } },
+  "setup": { "seed": 12345, "physicsVersion": 2, "initialSpeed": 1, "initialHash": "1a2b3c4d",
+             "config": { "upgrades": { "MAGNET": 0, "DOUBLE": 0, "SNEAKERS": 0, "JETPACK": 0 }, "startBonus": null,
+                         "skin": "DEFAULT", "hoverboards": 3, "scoreMultiplier": 1 } },
   "events": [
     [0, 0, 0, "RUN_START", { "seed": 12345, "speed": 1, "physics": 1 }],
     [12, 270, 7200, "LANE_LEFT", {}]
@@ -224,6 +230,19 @@ atomiques (pièces et clés ensemble ou rien). Les paramètres sont sauvegardés
 de modification et la version (migration automatique du format v1). L'onglet **Boutique** propose des achats
 simulés et un test « 1 000 achats ».
 
+### Boutique
+
+| Rayon | Articles |
+|---|---|
+| Personnages | Rio (offert), Néa 1 500 pièces, Zia 30 clés, Kage 12 000 pièces, Boulon 20 000 pièces + 10 clés, Aurum 50 000 pièces + 25 clés |
+| Améliorations | Aimant, Score ×2, Super-baskets, Jetpack : 500 → 8 000 pièces, +2 s de durée par niveau |
+| Objets | Hoverboard ×1 (300), ×5 (1 200), aimant de départ (300), boîte mystère (500 : pièces, clés ou hoverboard) |
+| Multiplicateur | +1 pour 3 × (niveau actuel) clés, jusqu'à ×10 |
+
+Les hoverboards, le multiplicateur, les niveaux et le personnage sont **figés dans la run au démarrage** : un rejeu
+utilise exactement ceux de l'enregistrement, ne consomme rien et ne crédite rien. Les planches utilisées pendant une
+vraie run sont retirées de l'inventaire à la fin.
+
 Ces ressources n'existent **que dans ce prototype**. Aucun compte, achat ou sauvegarde d'un service tiers n'est
 lu ni modifié.
 
@@ -243,12 +262,12 @@ lu ni modifié.
 ## 14. Tests automatisés
 
 ```bash
-npm test                 # 71 tests : unitaires + intégration + régression + rejeu long (≈ 1,5 s)
+npm test                 # 80 tests : unitaires + intégration + régression + rejeu long (≈ 1,5 s)
 npm run test:unit        # modules isolés
 npm run test:integration # scénarios A à E et contrôles du LabController
 npm run test:regression  # déterminisme, empreinte de référence, rejeu de 30 min
 npm run test:perf        # mesures d'une run de 30 min simulées (argument : minutes)
-npm run test:e2e         # navigateur réel (Playwright + Chromium), 10 étapes via l'interface
+npm run test:e2e         # navigateur réel (Playwright + Chromium), 12 étapes via l'interface
 ```
 
 L'empreinte de référence (`tests/regression/determinism.test.mjs`) détecte toute modification involontaire de la
@@ -290,8 +309,8 @@ tests/        unit, integration, regression, replay, perf, e2e, helpers
 ## 16. Limites d'intégration avec le jeu officiel
 
 - Ce projet **ne modifie pas Subway Surfers** (SYBO). Son code, ses cartes, ses modèles et ses sauvegardes ne
-  sont pas accessibles ici, et le prototype n'en contient aucun élément : décor, personnages et trains sont
-  dessinés de façon générique.
+  sont pas accessibles ici, et le prototype n'en contient aucun élément : il reprend des **mécaniques** de
+  runner (rampes, toits, hoverboard, jetpack, boutique), mais personnages, noms, décors et trains sont originaux.
 - Il n'existe pas d'API autorisée permettant de lire ou d'écrire les pièces, les clés ou l'horloge du jeu
   officiel. Injecter un « mod menu » dans l'APK (pièces/clés illimitées, ralenti) reviendrait à modifier une
   application commerciale et à contourner ses achats intégrés : ce n'est pas réalisé ici et ne le sera pas.

@@ -12,7 +12,7 @@ cd cercle && npm install && npm run dev   # http://127.0.0.1:5173 — identifian
 
 ## Subway Surfers Infinite Lab
 
-Prototype autonome jouable sur ordinateur et Android (navigateur) inspiré de Subway Surfers : pièces et clés de test illimitées, ralenti 0,10× → 1,00× à chaud, enregistrement intégral d'une run et rejeu déterministe vérifié (71 tests + test navigateur).
+Prototype autonome jouable sur ordinateur et Android (navigateur) inspiré de Subway Surfers : pièces et clés de test illimitées, ralenti 0,10× → 1,00× à chaud, enregistrement intégral d'une run et rejeu déterministe vérifié (80 tests + test navigateur), boutique, personnages, hoverboards, jetpack et toits de trains.
 
 Documentation, architecture et rapport de validation : [`subway-lab/README.md`](subway-lab/README.md).
 

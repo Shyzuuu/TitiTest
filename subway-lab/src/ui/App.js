@@ -265,7 +265,7 @@ export function bootstrap() {
 
   // HUD
   const hud = {
-    score: $('hud-score'), coins: $('hud-coins'), distance: $('hud-distance'), speed: $('hud-speed'),
+    score: $('hud-score'), coins: $('hud-coins'), keys: $('hud-keys'), board: $('hud-board'), distance: $('hud-distance'), speed: $('hud-speed'),
     rec: $('hud-rec'), replay: $('hud-replay'), progress: /** @type {HTMLElement} */ ($('hud-progress')),
   };
   const top = { state: $('top-state'), rec: $('top-rec'), replay: $('top-replay'), speed: $('top-speed') };
@@ -275,6 +275,12 @@ export function bootstrap() {
     const w = s.world;
     setText(hud.score, w ? fmtInt(w.score) : '0');
     setText(hud.coins, w ? fmtInt(w.coins) : '0');
+    setText(hud.keys, w ? fmtInt(w.keys) : '0');
+    const boardOn = !!w && (w.hoverboardTicks > 0 || w.hoverboardsLeft > 0) && !w.crashed;
+    setVisible(hud.board, boardOn);
+    if (w && boardOn) {
+      setText(hud.board, w.hoverboardTicks > 0 ? `HOVERBOARD ${Math.ceil(w.hoverboardTicks / 60)} s` : `Hoverboards : ${w.hoverboardsLeft} (double appui)`);
+    }
     setText(hud.distance, w ? `${fmtInt(w.distance)} m` : '0 m');
     setText(hud.speed, formatSpeed(s.clock.multiplier));
     setClass(hud.speed, 'slow', s.clock.multiplier < 1);

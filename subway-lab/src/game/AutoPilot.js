@@ -4,7 +4,7 @@
  * exactement comme un joueur ; ses actions sont donc enregistrées et rejouées normalement.
  */
 
-import { LANE_COUNT, OBSTACLE_SHAPES, PLAYER_HALF_DEPTH, laneX } from './constants.js';
+import { LANE_COUNT, OBSTACLE_SHAPES, PLAYER_HALF_DEPTH, STEP_UP, laneX } from './constants.js';
 
 /**
  * @param {import('./GameWorld.js').GameWorld} world
@@ -14,10 +14,16 @@ import { LANE_COUNT, OBSTACLE_SHAPES, PLAYER_HALF_DEPTH, laneX } from './constan
  * @returns {import('./GameWorld.js').Obstacle | null}
  */
 function firstObstacle(world, lane, from, to) {
+  const y = world.player.y;
   for (const o of world.obstacles) {
-    if (o.lane !== lane) continue;
+    if (o.lane !== lane || o.kind === 'RAMP') continue;
     if (o.z + o.len < from) continue;
+    // Un obstacle sous le joueur (toit, vol) ne le menace pas.
+    const top = o.kind === 'TRAIN' ? OBSTACLE_SHAPES.TRAIN.top - STEP_UP : OBSTACLE_SHAPES[o.kind].top;
+    if (y >= top) continue;
     if (o.z > to) return null;
+    // Un train précédé d'une rampe dans la même voie est franchissable.
+    if (o.kind === 'TRAIN' && world.obstacles.some((r) => r.kind === 'RAMP' && r.lane === lane && Math.abs(r.z + r.len - o.z) < 1e-6 && r.z + r.len >= from)) continue;
     return o;
   }
   return null;
@@ -29,7 +35,7 @@ function firstObstacle(world, lane, from, to) {
  */
 export function decideAction(world) {
   const p = world.player;
-  if (p.crashed) return null;
+  if (p.crashed || world.powerups.JETPACK > 0) return null;
   const front = p.z + PLAYER_HALF_DEPTH;
   const look = world.speed * 1.3 + 8;
   const threat = firstObstacle(world, p.lane, p.z - 0.6, p.z + look);

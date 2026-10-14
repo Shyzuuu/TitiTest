@@ -4,7 +4,7 @@
  * sans train, atteignable depuis la voie sûre précédente sans traverser de train.
  */
 
-import { BARRIER_DEPTH, COIN_SPACING, FIRST_ROW_Z, LANE_COUNT, POWERUP_KINDS, SPAWN_AHEAD } from '../constants.js';
+import { BARRIER_DEPTH, COIN_SPACING, FIRST_ROW_Z, LANE_COUNT, POWERUP_KINDS, RAMP_LENGTH, SPAWN_AHEAD, TRAIN_TOP } from '../constants.js';
 import { difficultyForDistance, speedForDistance } from './DifficultySystem.js';
 
 const NO_TRAIN = -1e9;
@@ -84,9 +84,18 @@ export function generateRow(world, z) {
     ]);
     if (kind === 'TRAIN') {
       const len = rng.range(16, 34);
-      sp.trainEnd[lane] = z + len;
       trainPlacedHere[lane] = true;
-      world.addObstacle('TRAIN', lane, z, len);
+      // Une partie des trains est précédée d'une rampe : on peut monter courir sur le toit.
+      if (rng.chance(0.4)) {
+        world.addObstacle('RAMP', lane, z, RAMP_LENGTH);
+        world.addObstacle('TRAIN', lane, z + RAMP_LENGTH, len);
+        sp.trainEnd[lane] = z + RAMP_LENGTH + len;
+        const roofCoins = Math.floor((len - 2) / COIN_SPACING);
+        for (let i = 0; i < roofCoins; i++) world.addCollectible('COIN', lane, z + RAMP_LENGTH + 1.5 + i * COIN_SPACING, TRAIN_TOP + 0.7);
+      } else {
+        sp.trainEnd[lane] = z + len;
+        world.addObstacle('TRAIN', lane, z, len);
+      }
     } else {
       world.addObstacle(kind, lane, z, BARRIER_DEPTH);
     }
@@ -102,7 +111,8 @@ export function generateRow(world, z) {
     for (let i = 0; i < count; i++) world.addCollectible('COIN', lane, z + 2.5 + i * COIN_SPACING, 0.7);
   }
   if (rng.chance(0.03)) world.addCollectible('KEY', safe, z + gap * 0.5, 0.9);
-  if (rng.chance(0.06)) world.addCollectible(rng.pick(POWERUP_KINDS), safe, z + gap * 0.75, 0.9);
+  if (rng.chance(0.07)) world.addCollectible(rng.pick(POWERUP_KINDS), safe, z + gap * 0.75, 0.9);
+  else if (rng.chance(0.04)) world.addCollectible('BOX', safe, z + gap * 0.75, 0.9);
 
   sp.nextRowZ = z + gap;
   sp.rows++;

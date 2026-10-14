@@ -160,6 +160,28 @@ try {
     await page.waitForSelector('.report .ok-text');
   });
 
+  await step('Boutique : débloquer et équiper un personnage, acheter un hoverboard', async () => {
+    await tab('Boutique');
+    const card = page.locator('.char-card', { hasText: 'Néa' });
+    await card.locator('button:text-is("Débloquer")').click();
+    await card.locator('button:text-is("Équiper")').click();
+    assert.equal(await lab('l.shop.profile.equippedCharacter'), 'NEON');
+    await page.locator('.shop-list li', { hasText: 'Hoverboard ×1' }).locator('button').click();
+    assert.equal(await lab('l.shop.profile.hoverboards'), 1);
+  });
+
+  await step('Hoverboard par double appui pendant une partie', async () => {
+    await page.click('#overlay-buttons button:has-text("Nouvelle partie")');
+    await waitState('RUNNING');
+    const box = await page.locator('#stage').boundingBox();
+    const x = box.x + box.width / 3;
+    const y = box.y + box.height / 2;
+    await page.mouse.click(x, y);
+    await page.mouse.click(x, y);
+    await page.waitForFunction(() => window.__lab.world.hoverboardTicks > 0 || window.__lab.world.hoverboardsUsed > 0, null, { timeout: 3000 });
+    assert.equal(await lab('l.world.config.skin'), 'NEON');
+  });
+
   await step('Aucune erreur JavaScript dans la page', async () => {
     assert.deepEqual(pageErrors, []);
   });

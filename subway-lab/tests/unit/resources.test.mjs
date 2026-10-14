@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ResourceTestManager, parseAmount, parseResourceSettings, MAX_RESOURCE } from '../../src/resources/ResourceTestManager.js';
-import { PurchaseSimulator, reviveCost, CATALOG } from '../../src/resources/PurchaseSimulator.js';
+import { PurchaseSimulator, reviveCost, CATALOG, parseProfile } from '../../src/resources/PurchaseSimulator.js';
 import { SaveManager } from '../../src/storage/SaveManager.js';
 import { MemoryStorage } from '../../src/storage/StorageAdapter.js';
 
@@ -107,7 +107,7 @@ test('Migration des paramètres v1 → v2', () => {
   assert.throws(() => parseResourceSettings({ version: 3 }));
 });
 
-test('Boutique : améliorations, bonus de départ, tenues, résurrection', () => {
+test('Boutique : améliorations, bonus de départ, personnages, résurrection', () => {
   const { res, shop } = setup();
   res.setCustom('coins', 2000);
   assert.equal(shop.buy('UPGRADE_MAGNET').ok, true);
@@ -118,14 +118,50 @@ test('Boutique : améliorations, bonus de départ, tenues, résurrection', () =>
   assert.equal(cfg.startBonus, 'MAGNET');
   assert.equal(cfg.upgrades.MAGNET, 1);
   assert.equal(shop.consumeRunConfig().startBonus, null, 'bonus consommé');
-  assert.equal(shop.buy('SKIN_GOLD').ok, false);
+  assert.equal(shop.buy('CHAR_GOLD').ok, false);
   res.enableUnlimited('both');
-  assert.equal(shop.buy('SKIN_GOLD').ok, true);
-  assert.equal(shop.buy('SKIN_GOLD').ok, false, 'déjà possédée');
+  assert.equal(shop.buy('CHAR_GOLD').ok, true);
+  assert.equal(shop.buy('CHAR_GOLD').ok, false, 'déjà débloqué');
   shop.equip('GOLD');
   assert.equal(shop.consumeRunConfig().skin, 'GOLD');
-  assert.throws(() => shop.equip('NEON'));
+  assert.throws(() => shop.equip('NINJA'));
   assert.deepEqual([0, 1, 2, 3].map((n) => reviveCost(n).keys), [1, 2, 4, 8]);
   for (let i = 0; i < 10; i++) shop.buy('UPGRADE_DOUBLE');
   assert.equal(shop.profile.upgrades.DOUBLE, 5, 'niveau plafonné');
+});
+
+test('Boutique : hoverboards, multiplicateur payé en clés, boîte mystère, inventaire figé', () => {
+  const { res, shop } = setup();
+  res.setCustom('coins', 1500);
+  res.setCustom('keys', 10);
+  assert.equal(shop.buy('HOVERBOARD_5').ok, true);
+  assert.equal(shop.buy('HOVERBOARD_1').ok, true);
+  assert.equal(shop.profile.hoverboards, 6);
+  assert.equal(shop.buy('MULTIPLIER').ok, true); // 3 clés
+  assert.equal(shop.buy('MULTIPLIER').ok, true); // 6 clés
+  assert.equal(shop.buy('MULTIPLIER').ok, false, 'clés insuffisantes');
+  assert.equal(res.balance('keys'), 1);
+  const cfg = shop.consumeRunConfig();
+  assert.equal(cfg.hoverboards, 6);
+  assert.equal(cfg.scoreMultiplier, 3);
+  shop.useHoverboards(2);
+  assert.equal(shop.profile.hoverboards, 4);
+  // Boîte mystère : tirage injectable.
+  const draws = [0.1, 0.5];
+  shop.random = () => draws.shift() ?? 0;
+  res.setCustom('coins', 500);
+  const box = shop.buy('MYSTERY_BOX');
+  assert.equal(box.ok, true);
+  assert.deepEqual(box.reward, { kind: 'COINS', amount: 600 });
+  assert.equal(res.balance('coins'), 600);
+});
+
+test('Profil : migration v1 → v2 (tenues → personnages)', () => {
+  const p = parseProfile({ version: 1, upgrades: { MAGNET: 2, DOUBLE: 0, SNEAKERS: 1 }, startMagnets: 3, skins: ['DEFAULT', 'NEON'], equippedSkin: 'NEON' });
+  assert.equal(p.version, 2);
+  assert.deepEqual(p.characters, ['DEFAULT', 'NEON']);
+  assert.equal(p.equippedCharacter, 'NEON');
+  assert.equal(p.upgrades.JETPACK, 0);
+  assert.equal(p.hoverboards, 0);
+  assert.throws(() => parseProfile({ ...p, characters: ['HACKER'] }));
 });

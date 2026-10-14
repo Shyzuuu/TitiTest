@@ -4,10 +4,12 @@
  * leur position (event.code), ce qui rend « A » fonctionnel en AZERTY comme en QWERTY.
  */
 
-export const BINDABLE = /** @type {const} */ (['LANE_LEFT', 'LANE_RIGHT', 'JUMP', 'SLIDE', 'PAUSE', 'RESTART']);
+export const BINDABLE = /** @type {const} */ (['LANE_LEFT', 'LANE_RIGHT', 'JUMP', 'SLIDE', 'HOVERBOARD', 'PAUSE', 'RESTART']);
 export const BINDING_LABELS = Object.freeze({
-  LANE_LEFT: 'Voie gauche', LANE_RIGHT: 'Voie droite', JUMP: 'Saut', SLIDE: 'Glissade', PAUSE: 'Pause', RESTART: 'Recommencer',
+  LANE_LEFT: 'Voie gauche', LANE_RIGHT: 'Voie droite', JUMP: 'Saut', SLIDE: 'Glissade', HOVERBOARD: 'Hoverboard', PAUSE: 'Pause', RESTART: 'Recommencer',
 });
+/** Deux appuis brefs espacés de moins de ce délai = hoverboard (comme dans le jeu de référence). */
+export const DOUBLE_TAP_MS = 320;
 export const SETTINGS_VERSION = 1;
 const MAX_BINDINGS = 3;
 const CODE_PATTERN = /^[A-Za-z0-9]{1,24}$/;
@@ -21,6 +23,7 @@ export function defaultKeyMap() {
     LANE_RIGHT: ['ArrowRight', 'KeyD'],
     JUMP: ['ArrowUp', 'Space', 'KeyW'],
     SLIDE: ['ArrowDown', 'KeyS'],
+    HOVERBOARD: ['KeyH'],
     PAUSE: ['Escape', 'KeyP'],
     RESTART: ['KeyR'],
   };
@@ -41,7 +44,8 @@ export function parseSettings(raw) {
   if (r.version !== SETTINGS_VERSION) throw new Error(`version ${String(r.version)} non prise en charge`);
   const out = defaultSettings();
   for (const action of BINDABLE) {
-    const list = r.keymap?.[action];
+    // Les réglages enregistrés avant l'ajout d'une action gardent sa touche par défaut.
+    const list = r.keymap?.[action] ?? (action === 'HOVERBOARD' ? out.keymap.HOVERBOARD : undefined);
     if (!Array.isArray(list) || list.length > MAX_BINDINGS || !list.every((c) => typeof c === 'string' && CODE_PATTERN.test(c))) {
       throw new Error(`touches de ${action} invalides`);
     }
@@ -107,8 +111,10 @@ export class InputController {
     this.loadWarning = null;
     /** @type {((code: string) => void) | null} */
     this.captureNext = null;
-    /** @type {{ id: number, x: number, y: number, fired: boolean } | null} */
+    /** @type {{ id: number, x: number, y: number, fired: boolean, at: number } | null} */
     this.gesture = null;
+    /** Instant du dernier appui bref (sans glissement), pour le double appui. */
+    this.lastTapAt = -Infinity;
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onPointerDown = this.onPointerDown.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
@@ -187,7 +193,7 @@ export class InputController {
   /** @param {PointerEvent} e */
   onPointerDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    this.gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, fired: false };
+    this.gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, fired: false, at: e.timeStamp };
   }
 
   /** @param {PointerEvent} e */
@@ -203,6 +209,13 @@ export class InputController {
 
   /** @param {PointerEvent} e */
   onPointerUp(e) {
-    if (this.gesture && this.gesture.id === e.pointerId) this.gesture = null;
+    const g = this.gesture;
+    if (!g || g.id !== e.pointerId) return;
+    this.gesture = null;
+    if (g.fired || e.type === 'pointercancel') return;
+    if (e.timeStamp - this.lastTapAt < DOUBLE_TAP_MS) {
+      this.lastTapAt = -Infinity;
+      this.onAction('HOVERBOARD');
+    } else this.lastTapAt = e.timeStamp;
   }
 }

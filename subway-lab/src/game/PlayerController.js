@@ -5,6 +5,7 @@
 
 import { requestJump } from './systems/JumpSystem.js';
 import { requestLaneChange } from './systems/LaneMovementSystem.js';
+import { activateHoverboard } from './systems/PowerupSystem.js';
 import { requestSlide } from './systems/SlideSystem.js';
 
 /**
@@ -16,15 +17,18 @@ export function applyPlayerAction(world, action) {
   const p = world.player;
   if (action === 'REVIVE') return world.revive();
   if (p.crashed) return false;
+  const flying = world.powerups.JETPACK > 0;
   switch (action) {
     case 'LANE_LEFT':
       return requestLaneChange(p, -1);
     case 'LANE_RIGHT':
       return requestLaneChange(p, 1);
     case 'JUMP':
-      return requestJump(p, world.powerups.SNEAKERS > 0);
+      return !flying && requestJump(p, world.powerups.SNEAKERS > 0);
     case 'SLIDE':
-      return requestSlide(p);
+      return !flying && requestSlide(p);
+    case 'HOVERBOARD':
+      return activateHoverboard(world);
     default:
       throw new RangeError(`Action inconnue : ${action}`);
   }

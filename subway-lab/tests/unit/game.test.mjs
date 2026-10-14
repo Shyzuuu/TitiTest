@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GameWorld } from '../../src/game/GameWorld.js';
 import { defaultRunConfig, parseRunConfig } from '../../src/game/runConfig.js';
-import { BARRIER_DEPTH, JUMP_VELOCITY, GRAVITY, LANE_WIDTH, SLIDE_TICKS, laneX } from '../../src/game/constants.js';
+import { BARRIER_DEPTH, JUMP_VELOCITY, GRAVITY, LANE_WIDTH, RAMP_LENGTH, SLIDE_TICKS, TRAIN_TOP, laneX } from '../../src/game/constants.js';
 import { generateRow } from '../../src/game/systems/ObstacleSpawner.js';
 import { speedForDistance } from '../../src/game/systems/DifficultySystem.js';
 
@@ -183,7 +183,8 @@ test('Générateur : jamais trois voies bloquées par des trains, difficulté pr
       generateRow(w, z);
       z = w.spawner.nextRowZ;
     }
-    const trains = w.obstacles.filter((o) => o.kind === 'TRAIN');
+    // Une rampe précède son train : l'ensemble bloque la voie (on ne monte que par l'avant).
+    const trains = w.obstacles.filter((o) => o.kind === 'TRAIN' || o.kind === 'RAMP');
     // Balayage par événements : O(n log n) au lieu d'un échantillonnage dense.
     const edges = trains.flatMap((t) => [[t.z, 1, t.lane], [t.z + t.len, -1, t.lane]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     const active = [0, 0, 0];
@@ -191,8 +192,8 @@ test('Générateur : jamais trois voies bloquées par des trains, difficulté pr
       active[lane] += d;
       assert.ok(!(active[0] > 0 && active[1] > 0 && active[2] > 0), `graine ${seed} : trois voies bloquées`);
     }
-    // Pas de pièce à l'intérieur d'un train
-    for (const c of w.collectibles) {
+    // Pas de pièce à l'intérieur d'un train (les pièces de toit sont au-dessus)
+    for (const c of w.collectibles.filter((x) => x.y < 3)) {
       assert.ok(!trains.some((t) => t.lane === c.lane && c.z > t.z && c.z < t.z + t.len), `graine ${seed} : pièce dans un train`);
     }
   }
@@ -205,4 +206,88 @@ test('Configuration de run validée', () => {
   assert.equal(parseRunConfig({ ...defaultRunConfig(), skin: 'HACK' }).ok, false);
   assert.equal(parseRunConfig({ ...defaultRunConfig(), upgrades: { MAGNET: 9, DOUBLE: 0, SNEAKERS: 0 } }).ok, false);
   assert.throws(() => new GameWorld({ seed: 1, config: /** @type {any} */ ({}) }));
+});
+
+test('Rampe : monter sur le toit, courir dessus, retomber à la fin', () => {
+  const { w } = emptyWorld();
+  w.addObstacle('RAMP', 1, 5, RAMP_LENGTH);
+  w.addObstacle('TRAIN', 1, 5 + RAMP_LENGTH, 20);
+  let maxY = 0;
+  let roofTicks = 0;
+  for (let i = 0; i < 300; i++) {
+    w.step();
+    maxY = Math.max(maxY, w.player.y);
+    if (!w.player.airborne && w.player.y === TRAIN_TOP) roofTicks++;
+  }
+  assert.equal(w.player.crashed, false, 'la rampe mène au toit sans collision');
+  assert.equal(maxY, TRAIN_TOP);
+  assert.ok(roofTicks > 60);
+  assert.equal(w.player.y, 0, 'retombé au sol après le train');
+});
+
+test('Train sans rampe : on ne peut pas sauter dessus', () => {
+  const { w } = emptyWorld();
+  w.addObstacle('TRAIN', 1, 4, 20);
+  w.applyAction('JUMP');
+  for (let i = 0; i < 40; i++) w.step();
+  assert.equal(w.player.crashed, true);
+});
+
+test('Jetpack : vol au-dessus des obstacles, pièces aspirées, atterrissage', () => {
+  const { w, events } = emptyWorld();
+  w.addCollectible('JETPACK', 1, 2, 0.9);
+  for (let i = 0; i < 20; i++) w.step();
+  assert.ok(w.powerups.JETPACK > 0);
+  w.addObstacle('TRAIN', 1, w.player.z + 20, 30);
+  w.addObstacle('HIGH', 1, w.player.z + 60, BARRIER_DEPTH);
+  w.addCollectible('COIN', 1, w.player.z + 15, 0.7);
+  assert.equal(w.applyAction('JUMP'), false, 'pas de saut en vol');
+  for (let i = 0; i < 240; i++) w.step();
+  assert.equal(w.player.crashed, false);
+  assert.ok(w.coinsRun >= 1);
+  assert.ok(events.some(([t, p]) => t === 'PLAYER_STATE' && p.to === 'FLYING'));
+  while (w.powerups.JETPACK > 0) w.step();
+  w.obstacles.length = 0;
+  for (let i = 0; i < 120; i++) w.step();
+  assert.equal(w.player.y, 0);
+});
+
+test('Hoverboard : absorbe un crash puis disparaît ; inventaire limité', () => {
+  const cfg = defaultRunConfig();
+  cfg.hoverboards = 1;
+  const { w, events } = emptyWorld(1, cfg);
+  assert.equal(w.applyAction('HOVERBOARD'), true);
+  assert.equal(w.applyAction('HOVERBOARD'), false, 'déjà actif');
+  w.addObstacle('TRAIN', 1, 6, 20);
+  for (let i = 0; i < 60; i++) w.step();
+  assert.equal(w.player.crashed, false);
+  assert.ok(events.some(([t, p]) => t === 'HOVERBOARD_END' && p.reason === 'crash'));
+  assert.equal(w.hoverboardTicks, 0);
+  assert.equal(w.applyAction('HOVERBOARD'), false, 'plus de planche');
+  for (let i = 0; i < 60; i++) w.step();
+  assert.equal(w.player.crashed, true, 'sans planche, le train est fatal');
+});
+
+test('Boîte mystère et multiplicateur de score', () => {
+  const cfg = defaultRunConfig();
+  cfg.scoreMultiplier = 3;
+  const { w, events } = emptyWorld(5, cfg);
+  w.addCollectible('BOX', 1, 3, 0.9);
+  for (let i = 0; i < 60; i++) w.step();
+  const box = events.find(([t]) => t === 'BOX');
+  assert.ok(box);
+  assert.ok(w.coinsRun > 0 || w.keysRun === 1);
+  assert.ok(w.score >= Math.floor(w.distance * 3) - 1, 'multiplicateur appliqué aux points de distance');
+});
+
+test('Résumé du monde (utilisé par l\'interface à chaque rafraîchissement)', () => {
+  const cfg = defaultRunConfig();
+  cfg.hoverboards = 2;
+  const w = new GameWorld({ seed: 9, config: cfg });
+  for (let i = 0; i < 120; i++) w.step();
+  const s = w.summary();
+  assert.equal(s.hoverboardsLeft, 2);
+  assert.equal(s.onRoof, false);
+  assert.equal(typeof s.powerups.JETPACK, 'number');
+  assert.ok(s.distance > 0);
 });

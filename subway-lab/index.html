@@ -28,7 +28,8 @@
     <div class="hud" aria-live="off">
       <div class="hud-left">
         <div class="hud-score" id="hud-score">0</div>
-        <div class="hud-small"><span class="coin-dot"></span><span id="hud-coins">0</span> · <span id="hud-distance">0 m</span></div>
+        <div class="hud-small"><span class="coin-dot"></span><span id="hud-coins">0</span> <span class="key-dot"></span><span id="hud-keys">0</span> · <span id="hud-distance">0 m</span></div>
+        <div id="hud-board" class="hud-chip" hidden></div>
       </div>
       <div class="hud-right">
         <div id="hud-speed" class="hud-speed">1,00×</div>
@@ -49,6 +50,7 @@
       <button type="button" data-action="JUMP" aria-label="Saut">▲</button>
       <button type="button" data-action="SLIDE" aria-label="Glissade">▼</button>
       <button type="button" data-action="LANE_RIGHT" aria-label="Voie droite">▶</button>
+      <button type="button" data-action="HOVERBOARD" aria-label="Hoverboard">BOARD</button>
     </div>
     <button id="fab" class="fab" type="button" aria-controls="panel" aria-expanded="false">LAB</button>
   </main>

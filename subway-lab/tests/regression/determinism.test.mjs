@@ -11,7 +11,7 @@ import { defaultRunConfig } from '../../src/game/runConfig.js';
 import { PHYSICS_VERSION } from '../../src/game/constants.js';
 import { makeLab, recordAutopilotRun, replayToEnd, runFrames, scriptedAction } from '../helpers/fixtures.mjs';
 
-const GOLDEN = { physics: 1, hash: '9766a349' };
+const GOLDEN = { physics: 2, hash: 'c2a2c94b' };
 
 test('Empreinte de référence de la physique (graine et entrées fixes)', () => {
   const w = new GameWorld({ seed: 20261014, config: defaultRunConfig() });
@@ -92,7 +92,7 @@ test('La configuration figée dans la run prime sur le profil courant', () => {
   assert.equal(rec.run.setup.config.startBonus, 'MAGNET');
   // Le profil évolue après l'enregistrement…
   for (let i = 0; i < 4; i++) lab.shop.buy('UPGRADE_MAGNET');
-  lab.shop.buy('SKIN_NEON');
+  lab.shop.buy('CHAR_NEON');
   lab.shop.equip('NEON');
   // … mais le rejeu reste exact.
   assert.equal(replayToEnd(lab, rec.summary.id).exact, true);
@@ -109,4 +109,21 @@ test('Ordre des événements : séquence stricte, actions avant leurs conséquen
     const after = ev.slice(revive + 1).find((e) => e[3] === 'PLAYER_STATE');
     assert.equal(after?.[4].from, 'CRASHED');
   }
+});
+
+test('Hoverboard pendant un enregistrement : planche déduite du profil, rejeu exact et gratuit', () => {
+  const { lab } = makeLab();
+  lab.resources.enableUnlimited('coins');
+  lab.shop.buy('HOVERBOARD_5');
+  lab.startRun({ record: true, seed: 3131 });
+  lab.advanceTicks(30);
+  assert.equal(lab.input('HOVERBOARD').accepted, true);
+  lab.advanceTicks(600);
+  const rec = lab.stopRecording();
+  assert.equal(rec.run.setup.config.hoverboards, 5);
+  assert.ok(rec.run.events.some((e) => e[3] === 'HOVERBOARD_START'));
+  assert.equal(lab.shop.profile.hoverboards, 4, 'une planche consommée');
+  const report = replayToEnd(lab, rec.summary.id);
+  assert.equal(report.exact, true, report.verdict);
+  assert.equal(lab.shop.profile.hoverboards, 4, 'le rejeu ne consomme rien');
 });

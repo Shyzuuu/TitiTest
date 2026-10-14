@@ -6,13 +6,13 @@
 
 import { hashNumbers } from '../core/hash.js';
 import { RandomProvider } from '../simulation/RandomProvider.js';
-import { DESPAWN_BEHIND, POWERUP_KINDS, laneX } from './constants.js';
+import { DESPAWN_BEHIND, INVULNERABLE_TICKS, POWERUP_KINDS, laneX } from './constants.js';
 import { applyPlayerAction } from './PlayerController.js';
 import { parseRunConfig } from './runConfig.js';
 import { resolveCollisions } from './systems/CollisionSystem.js';
 import { updateCollectibles } from './systems/CollectibleSystem.js';
 import { speedForDistance, difficultyLevel } from './systems/DifficultySystem.js';
-import { updateJump } from './systems/JumpSystem.js';
+import { updateVertical } from './systems/JumpSystem.js';
 import { updateLaneMovement } from './systems/LaneMovementSystem.js';
 import { createSpawnerState, updateSpawner } from './systems/ObstacleSpawner.js';
 import { activatePowerup, updatePowerups } from './systems/PowerupSystem.js';
@@ -21,9 +21,9 @@ import { updateSlide } from './systems/SlideSystem.js';
 
 /**
  * @typedef {{ lane:number, prevLane:number, x:number, y:number, vy:number, z:number,
- *   airborne:boolean, slideTicks:number, slideQueued:boolean, stumbleTicks:number, crashed:boolean }} PlayerState
- * @typedef {{ id:number, kind:'LOW'|'HIGH'|'TRAIN', lane:number, z:number, len:number }} Obstacle
- * @typedef {{ id:number, kind:'COIN'|'KEY'|'MAGNET'|'DOUBLE'|'SNEAKERS', lane:number, z:number, y:number }} Collectible
+ *   airborne:boolean, slideTicks:number, slideQueued:boolean, stumbleTicks:number, crashed:boolean, invulnerableTicks:number }} PlayerState
+ * @typedef {{ id:number, kind:'LOW'|'HIGH'|'TRAIN'|'RAMP', lane:number, z:number, len:number }} Obstacle
+ * @typedef {{ id:number, kind:'COIN'|'KEY'|'BOX'|'MAGNET'|'DOUBLE'|'SNEAKERS'|'JETPACK', lane:number, z:number, y:number }} Collectible
  * @typedef {{ nextRowZ:number, trainEnd:number[], safeLane:number, rows:number }} SpawnerState
  * @typedef {(type: string, payload: Record<string, unknown>) => void} EventSink
  */
@@ -41,6 +41,9 @@ export class GameWorld {
     this.config = parsed.value;
     this.onEvent = onEvent;
     this.rng = new RandomProvider(seed);
+    // Inventaire de la run : un redémarrage (R) ne recharge pas les planches déjà utilisées.
+    this.hoverboardsLeft = this.config.hoverboards;
+    this.hoverboardsUsed = 0;
     this.reset(seed);
   }
 
@@ -52,7 +55,7 @@ export class GameWorld {
     /** @type {PlayerState} */
     this.player = {
       lane: 1, prevLane: 1, x: laneX(1), y: 0, vy: 0, z: 0,
-      airborne: false, slideTicks: 0, slideQueued: false, stumbleTicks: 0, crashed: false,
+      airborne: false, slideTicks: 0, slideQueued: false, stumbleTicks: 0, crashed: false, invulnerableTicks: 0,
     };
     this.speed = speedForDistance(0);
     this.distance = 0;
@@ -69,8 +72,9 @@ export class GameWorld {
     this.collectibles = [];
     this.nextEntityId = 1;
     this.spawner = createSpawnerState();
-    /** @type {Record<'MAGNET'|'DOUBLE'|'SNEAKERS', number>} pas restants */
-    this.powerups = { MAGNET: 0, DOUBLE: 0, SNEAKERS: 0 };
+    /** @type {Record<'MAGNET'|'DOUBLE'|'SNEAKERS'|'JETPACK', number>} pas restants */
+    this.powerups = { MAGNET: 0, DOUBLE: 0, SNEAKERS: 0, JETPACK: 0 };
+    this.hoverboardTicks = 0;
     this.playerState = 'RUNNING';
     this.prevX = this.player.x;
     this.prevY = 0;
@@ -108,7 +112,7 @@ export class GameWorld {
 
   /** @param {number} base points avant multiplicateur */
   addScore(base) {
-    const mult = this.powerups.DOUBLE > 0 ? 2 : 1;
+    const mult = this.config.scoreMultiplier * (this.powerups.DOUBLE > 0 ? 2 : 1);
     this.scoreRaw += base * mult;
     this.score = Math.floor(this.scoreRaw);
   }
@@ -138,6 +142,7 @@ export class GameWorld {
     p.slideQueued = false;
     p.prevLane = p.lane;
     p.x = laneX(p.lane);
+    p.invulnerableTicks = INVULNERABLE_TICKS;
     this.revives++;
     this.updatePlayerState();
     return true;
@@ -157,13 +162,12 @@ export class GameWorld {
 
     const prevX = p.x;
     updateLaneMovement(p);
-    updateJump(p);
-    updateSlide(p);
-    if (p.stumbleTicks > 0) p.stumbleTicks--;
-
     this.speed = speedForDistance(this.distance);
     updateDistanceAndScore(this);
     updateSpawner(this);
+    updateVertical(this);
+    updateSlide(p);
+    if (p.stumbleTicks > 0) p.stumbleTicks--;
     resolveCollisions(this, prevX);
     updateCollectibles(this);
     updatePowerups(this);
@@ -174,7 +178,7 @@ export class GameWorld {
 
   updatePlayerState() {
     const p = this.player;
-    const next = p.crashed ? 'CRASHED' : p.airborne ? 'JUMPING' : p.slideTicks > 0 ? 'SLIDING' : 'RUNNING';
+    const next = p.crashed ? 'CRASHED' : this.powerups.JETPACK > 0 ? 'FLYING' : p.airborne ? 'JUMPING' : p.slideTicks > 0 ? 'SLIDING' : 'RUNNING';
     if (next !== this.playerState) {
       const from = this.playerState;
       this.playerState = next;
@@ -200,7 +204,8 @@ export class GameWorld {
       this.tick, p.lane, p.prevLane, p.x, p.y, p.vy, p.z, p.airborne ? 1 : 0, p.slideTicks, p.slideQueued ? 1 : 0,
       p.stumbleTicks, p.crashed ? 1 : 0, this.scoreRaw, this.coinsRun, this.keysRun, this.revives,
       this.rng.getState(), this.nextEntityId, this.obstacles.length, this.collectibles.length,
-      this.powerups.MAGNET, this.powerups.DOUBLE, this.powerups.SNEAKERS, this.spawner.nextRowZ,
+      this.powerups.MAGNET, this.powerups.DOUBLE, this.powerups.SNEAKERS, this.powerups.JETPACK, this.spawner.nextRowZ,
+      this.hoverboardTicks, this.hoverboardsLeft, p.invulnerableTicks,
     ]);
   }
 
@@ -229,6 +234,10 @@ export class GameWorld {
       crashed: this.player.crashed,
       lane: this.player.lane,
       powerups: { ...this.powerups },
+      hoverboardTicks: this.hoverboardTicks,
+      hoverboardsLeft: this.hoverboardsLeft,
+      hoverboardsUsed: this.hoverboardsUsed,
+      onRoof: !this.player.airborne && this.player.y > 0.5,
     };
   }
 }

@@ -2,8 +2,8 @@
 
 import { button, fmtInt, fmtNum, h, setDisabled, setText, statRow } from '../dom.js';
 
-const PLAYER_STATE_LABELS = { RUNNING: 'Course', JUMPING: 'Saut', SLIDING: 'Glissade', CRASHED: 'Collision' };
-const POWERUP_LABELS = { MAGNET: 'Aimant', DOUBLE: 'Score ×2', SNEAKERS: 'Super-baskets' };
+const PLAYER_STATE_LABELS = { RUNNING: 'Course', JUMPING: 'Saut', SLIDING: 'Glissade', FLYING: 'Vol (jetpack)', CRASHED: 'Collision' };
+const POWERUP_LABELS = { MAGNET: 'Aimant', DOUBLE: 'Score ×2', SNEAKERS: 'Super-baskets', JETPACK: 'Jetpack' };
 
 /** @param {import('../UiContext.js').UiContext} ctx */
 export function createGameplayPanel(ctx) {
@@ -20,6 +20,7 @@ export function createGameplayPanel(ctx) {
     game: statRow(stats, 'État du jeu'),
     level: statRow(stats, 'Difficulté'),
     powerups: statRow(stats, 'Bonus actifs'),
+    board: statRow(stats, 'Hoverboards'),
     seed: statRow(stats, 'Graine'),
   };
   const err = ctx.onError;
@@ -32,6 +33,10 @@ export function createGameplayPanel(ctx) {
     const r = lab.revive();
     ctx.toast('info', `Résurrection : ${r.cost.keys} clé(s) dépensée(s).`);
   }, err, { class: 'accent' });
+  const bBoard = button('Hoverboard (H)', () => {
+    const r = lab.input('HOVERBOARD');
+    if (!r.accepted) ctx.toast('info', r.reason ?? 'Hoverboard indisponible.');
+  }, err);
   const autopilot = /** @type {HTMLInputElement} */ (h('input', { type: 'checkbox', id: 'opt-autopilot' }));
   autopilot.addEventListener('change', () => {
     lab.autopilot = autopilot.checked;
@@ -40,7 +45,7 @@ export function createGameplayPanel(ctx) {
   const el = h('section', { class: 'panel-section' },
     h('h3', {}, 'Partie'),
     stats,
-    h('div', { class: 'btn-row' }, bPlay, bPause, bResume, bFinish, bRestart, bRevive),
+    h('div', { class: 'btn-row' }, bPlay, bPause, bResume, bFinish, bRestart, bRevive, bBoard),
     h('label', { class: 'check' }, autopilot, ' Pilote automatique (ses actions sont enregistrées comme celles d\'un joueur)'),
   );
 
@@ -59,6 +64,8 @@ export function createGameplayPanel(ctx) {
     const active = w ? Object.entries(w.powerups).filter(([, t]) => t > 0).map(([k, t]) => `${POWERUP_LABELS[/** @type {'MAGNET'} */ (k)]} ${Math.ceil(t / 60)} s`) : [];
     setText(v.powerups, active.length ? active.join(', ') : 'aucun');
     setText(v.seed, w ? String(w.seed) : '—');
+    setText(v.board, w ? `${w.hoverboardsLeft} en stock${w.hoverboardTicks > 0 ? ` · actif ${Math.ceil(w.hoverboardTicks / 60)} s` : ''}` : '—');
+    setDisabled(bBoard, !s.caps.input || !w || w.hoverboardsLeft <= 0 || w.hoverboardTicks > 0);
     setDisabled(bPlay, !s.caps.play);
     setDisabled(bPause, !s.caps.pause);
     setDisabled(bResume, !s.caps.resume);
