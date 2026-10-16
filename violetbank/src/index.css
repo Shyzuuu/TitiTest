@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 247 247 251;
+  --surface: 255 255 255;
+  --raised: 241 239 250;
+  --line: 230 228 240;
+  --ink: 16 16 20;
+  --muted: 110 110 122;
+  --brand: 118 86 246;
+  --brand-deep: 73 48 181;
+  --brand-soft: 233 227 255;
+  --brand-ink: 73 48 181;
+  --ok: 38 184 121;
+  --danger: 228 79 98;
+  --warn: 243 166 66;
+  --info: 66 133 244;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 16 16 20;
+  --surface: 25 25 31;
+  --raised: 34 33 42;
+  --line: 44 43 54;
+  --ink: 255 255 255;
+  --muted: 160 160 172;
+  --brand: 140 112 255;
+  --brand-deep: 118 86 246;
+  --brand-soft: 44 36 82;
+  --brand-ink: 185 167 255;
+  --ok: 52 205 140;
+  --danger: 240 106 124;
+  --warn: 245 178 90;
+  --info: 110 162 255;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    overflow-x: hidden;
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+  }
+  /* Les colonnes de grille ne doivent jamais s'élargir au contenu (graphiques, carrousels). */
+  .grid > * {
+    min-width: 0;
+  }
+  ::selection {
+    background: rgb(var(--brand) / 0.25);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-3xl border border-line bg-surface shadow-soft;
+  }
+  .input {
+    @apply w-full rounded-2xl border border-line bg-surface px-4 py-3 text-[15px] text-ink placeholder:text-muted/70 transition focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 disabled:opacity-60;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, rgb(var(--raised)) 0%, rgb(var(--line)) 50%, rgb(var(--raised)) 100%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-xl;
+  }
+  .card-3d {
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+}
+
+/* Réduction des mouvements : préférence système ou réglage de l'application. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
