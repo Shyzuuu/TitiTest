@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { ChevronLeft, ChevronRight, CreditCard, Lock, Pencil, Plus, Receipt, Trash2, Unlock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CreditCard, Lock, Pencil, Plus, Receipt, RefreshCw, Trash2, Unlock } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AccountSelect } from '../components/AccountSelect';
@@ -7,10 +7,10 @@ import { AmountInput } from '../components/AmountInput';
 import { TransactionList } from '../components/Transactions';
 import { VirtualCardView } from '../components/VirtualCardView';
 import { Badge, Button, Card, ConfirmDialog, EmptyState, Field, IconButton, KeyValue, Modal, PageHeader, Progress, Segmented, Switch, TextInput } from '../components/ui';
-import { createCard, deleteCard, setCardLock, updateCard, type CardInput } from '../domain/cards';
+import { createCard, deleteCard, demoExpiry, regenerateCardId, setCardLock, updateCard, type CardInput } from '../domain/cards';
 import { monthKey } from '../domain/dates';
 import { centsToInput, parseAmount } from '../domain/money';
-import type { CardStyle, VirtualCard } from '../domain/schema';
+import type { CardKind, CardStyle, VirtualCard } from '../domain/schema';
 import { cardMonthSpent } from '../domain/selectors';
 import { useActiveAccounts, useBankState, useMoney, useToday } from '../lib/hooks';
 import { useBank } from '../store/bank';
@@ -44,6 +44,7 @@ function CardForm({ card, onClose }: { card?: VirtualCard; onClose: () => void }
       : { name: '', accountId: accounts[0]?.id ?? '', color: '#7656F6', accent: '#4930B5', style: 'gradient', avatar: null, locked: false },
   );
   const [limit, setLimit] = useState(card?.monthlyLimit ? centsToInput(card.monthlyLimit) : '');
+  const [kind, setKind] = useState<CardKind>(card?.kind ?? 'standard');
   const [error, setError] = useState<{ name?: string; limit?: string; form?: string }>({});
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -57,12 +58,12 @@ function CardForm({ card, onClose }: { card?: VirtualCard; onClose: () => void }
     }
     setError(errs);
     if (Object.keys(errs).length) return;
-    const input: CardInput = { ...form, monthlyLimit };
+    const input: CardInput = { ...form, monthlyLimit, kind };
     const res = card ? act((s, ctx) => updateCard(s, ctx, card.id, input), { quietError: true }) : act((s, ctx) => createCard(s, ctx, input), { quietError: true });
     if (res.ok) onClose();
     else setError({ form: res.error });
   };
-  const preview = { ...form, name: form.name || 'Ma carte', holderName: profile.holderName, demoId: card?.demoId ?? 'DEMO 0000 0000', createdAt: card?.createdAt ?? new Date().toISOString().slice(0, 10) };
+  const preview = { ...form, kind, name: form.name || 'Ma carte', holderName: profile.holderName, demoId: card?.demoId ?? 'DEMO 0000 0000', createdAt: card?.createdAt ?? new Date().toISOString().slice(0, 10) };
   return (
     <Modal open onClose={onClose} title={card ? 'Modifier la carte' : 'Nouvelle carte de démonstration'} size="lg" description="Identifiant fictif sans valeur, non rattaché à un réseau de paiement.">
       <form onSubmit={submit} className="grid gap-6 md:grid-cols-2" noValidate>
@@ -71,6 +72,13 @@ function CardForm({ card, onClose }: { card?: VirtualCard; onClose: () => void }
           <p className="mt-3 text-center text-xs text-muted">Aperçu en direct</p>
         </div>
         <div className="space-y-4">
+          {!card && (
+            <div>
+              <span className="label">Type de carte</span>
+              <Segmented label="Type de carte" value={kind} onChange={setKind} options={[{ value: 'standard', label: 'Standard' }, { value: 'disposable', label: 'Jetable' }]} />
+              <p className="mt-1.5 text-xs text-muted">{kind === 'disposable' ? 'L’identifiant de démonstration est régénéré après chaque dépense simulée.' : 'Identifiant de démonstration fixe, régénérable à la demande.'}</p>
+            </div>
+          )}
           <Field label="Nom de la carte" error={error.name} htmlFor="card-name">
             <TextInput id="card-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} maxLength={32} placeholder="Ex. Achats en ligne" invalid={!!error.name} />
           </Field>
@@ -230,14 +238,22 @@ export default function Cards() {
             <Card className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="truncate text-xl font-bold">{card.name}</h2>
-                {card.locked ? <Badge tone="danger"><Lock size={12} /> Verrouillée</Badge> : <Badge tone="ok">Active</Badge>}
+                <span className="flex flex-wrap justify-end gap-1.5">
+                  {card.kind === 'disposable' && <Badge tone="brand">Jetable</Badge>}
+                  {card.locked ? <Badge tone="danger"><Lock size={12} /> Verrouillée</Badge> : <Badge tone="ok">Active</Badge>}
+                </span>
               </div>
               <dl className="mt-3 divide-y divide-line">
                 <KeyValue label="Compte associé" value={account?.name ?? '—'} />
                 <KeyValue label="Identifiant de démonstration" value={<span className="font-mono">{card.demoId}</span>} />
+                <KeyValue label="Expiration fictive" value={demoExpiry(card)} />
+                {card.kind === 'disposable' && <KeyValue label="Identifiants régénérés" value={card.regenerations} />}
                 <KeyValue label="Dépenses simulées ce mois" value={money(spent)} />
                 <KeyValue label="Plafond mensuel de test" value={card.monthlyLimit ? money(card.monthlyLimit) : 'Aucun'} />
               </dl>
+              <Button className="mt-3" size="sm" variant="secondary" icon={RefreshCw} onClick={() => act((s, ctx) => regenerateCardId(s, ctx, card.id))}>
+                Régénérer l’identifiant
+              </Button>
               {card.monthlyLimit && <Progress className="mt-3" value={(spent / card.monthlyLimit) * 100} color={spent > card.monthlyLimit * 0.9 ? 'rgb(var(--danger))' : undefined} label="Consommation du plafond" />}
             </Card>
             <Card className="p-4 sm:p-5">

@@ -125,6 +125,7 @@ export function createDemoState(today: ISODate = toISODate(new Date())): BankSta
 
   const premium = apply(createCard(state, ctxAt(day(-96)), { name: 'Violet Premium', accountId: main, color: '#7656F6', accent: '#4930B5', style: 'gradient', avatar: '🦄', monthlyLimit: 250_000, locked: false }));
   const online = apply(createCard(state, ctxAt(day(-96)), { name: 'Achats en ligne', accountId: spending.id, color: '#101014', accent: '#7656F6', style: 'metal', avatar: null, monthlyLimit: 60_000, locked: false }));
+  apply(createCard(state, ctxAt(day(-40)), { name: 'Jetable', accountId: spending.id, color: '#2B2B35', accent: '#7656F6', style: 'metal', avatar: null, monthlyLimit: 20_000, locked: false, kind: 'disposable' }));
   apply(createCard(state, ctxAt(day(-60)), { name: 'Voyage', accountId: main, color: '#B9A7FF', accent: '#4285F4', style: 'aurora', avatar: '✈️', monthlyLimit: null, locked: true }));
 
   for (const [cat, limit] of [['food', 45_000], ['gaming', 8_000], ['shopping', 25_000], ['transport', 9_000], ['subscriptions', 4_500], ['loan_repayment', 12_000]] as const) {

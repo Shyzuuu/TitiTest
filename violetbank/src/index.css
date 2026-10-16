@@ -21,16 +21,17 @@
 }
 
 .dark {
-  --bg: 16 16 20;
-  --surface: 25 25 31;
-  --raised: 34 33 42;
-  --line: 44 43 54;
+  /* Thème « violet nuit » : surfaces teintées plutôt que gris neutres. */
+  --bg: 19 14 38;
+  --surface: 35 28 64;
+  --raised: 47 39 82;
+  --line: 60 51 100;
   --ink: 255 255 255;
-  --muted: 160 160 172;
-  --brand: 140 112 255;
+  --muted: 178 170 206;
+  --brand: 150 120 255;
   --brand-deep: 118 86 246;
-  --brand-soft: 44 36 82;
-  --brand-ink: 185 167 255;
+  --brand-soft: 58 46 110;
+  --brand-ink: 196 182 255;
   --ok: 52 205 140;
   --danger: 240 106 124;
   --warn: 245 178 90;

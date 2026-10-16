@@ -131,7 +131,7 @@ test.describe('Scénario G — erreurs et cohérence', () => {
   test('montants invalides, solde insuffisant, double-clic, actualisation', async ({ page }) => {
     await resetToEmpty(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Ajouter', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Ajouter de l’argent', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Ajouter de l’argent fictif' });
     const input = dialog.getByLabel('Montant');
     const confirm = dialog.getByRole('button', { name: 'Confirmer l’ajout' });

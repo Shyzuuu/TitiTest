@@ -18,11 +18,13 @@ interface UiStore {
   toasts: Toast[];
   modal: ModalState | null;
   moreOpen: boolean;
+  searchOpen: boolean;
   toast: (tone: ToastTone, title: string, body?: string) => void;
   dismiss: (id: number) => void;
   openModal: (kind: ModalKind, props?: ModalState['props']) => void;
   closeModal: () => void;
   setMoreOpen: (open: boolean) => void;
+  setSearchOpen: (open: boolean) => void;
 }
 
 let nextId = 1;
@@ -32,6 +34,7 @@ export const useUi = create<UiStore>((set, get) => ({
   toasts: [],
   modal: null,
   moreOpen: false,
+  searchOpen: false,
   toast: (tone, title, body) => {
     const id = nextId++;
     // Au plus 4 toasts visibles : les plus anciens cèdent la place.
@@ -47,4 +50,5 @@ export const useUi = create<UiStore>((set, get) => ({
   openModal: (kind, props) => set({ modal: { kind, props }, moreOpen: false }),
   closeModal: () => set({ modal: null }),
   setMoreOpen: (moreOpen) => set({ moreOpen }),
+  setSearchOpen: (searchOpen) => set({ searchOpen, moreOpen: false }),
 }));

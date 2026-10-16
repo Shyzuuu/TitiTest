@@ -22,6 +22,7 @@ import {
 import { monthKey } from './dates';
 import { formatMoney, MAX_OPERATION_CENTS } from './money';
 import type { Account, AccountKind, BankState, Transaction } from './schema';
+import { makeDemoId } from './cards';
 import { cardMonthSpent, categorySpent } from './selectors';
 
 function assertAmount(amount: number): void {
@@ -231,6 +232,10 @@ export function recordExpense(state: BankState, ctx: Ctx, input: ExpenseInput): 
     const tx = buildTx(ctx, { ...base, amount: -input.amount });
     let next = withTx(state, tx);
     next = withLog(next, ctx, 'success', 'Dépense simulée', `${merchant} · ${formatMoney(input.amount)}`);
+    if (card?.kind === 'disposable') {
+      // Carte jetable : l'identifiant utilisé n'est plus valable après le paiement simulé.
+      next = { ...next, cards: next.cards.map((c) => (c.id === card.id ? { ...c, demoId: makeDemoId(), regenerations: c.regenerations + 1 } : c)) };
+    }
     next = checkBudgetAlert(next, ctx, category);
     next = withNotification(next, ctx, {
       kind: 'transaction',

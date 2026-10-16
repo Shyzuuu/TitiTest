@@ -1,19 +1,20 @@
 import clsx from 'clsx';
 import {
-  ArrowDownLeft, ArrowLeftRight, Bell, BookOpen, CalendarDays, Calculator, ChartPie, ChevronsLeft, ChevronsRight, CircleHelp, CreditCard,
-  FileClock, FolderOpen, HandCoins, History, Home, Landmark, LayoutGrid, Moon, PiggyBank, Plus, RotateCcw, Scale, Send, Settings,
+  ArrowDownLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, CalendarDays, Calculator, ChartPie, ChevronsLeft, ChevronsRight, ChevronsUpDown, CircleHelp, Coins, CreditCard,
+  FileClock, FolderOpen, HandCoins, History, Home, Landmark, Moon, PiggyBank, RotateCcw, Scale, Search, Send, Settings,
   Sun, Target, User, Users, Wallet, X, AlertTriangle, CheckCircle2, Info, XCircle, FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { formatDate } from '../domain/dates';
+import { formatMoney } from '../domain/money';
 import { useResolvedTheme, useToday } from '../lib/hooks';
 import { useBank } from '../store/bank';
 import { useUi } from '../store/ui';
-import { Logo, LogoMark } from './Logo';
+import { Logo } from './Logo';
 import { GlobalModals } from './OperationModals';
-import { Avatar, IconButton } from './ui';
+import { IconButton, Modal } from './ui';
 
 interface NavItem {
   to: string;
@@ -146,92 +147,220 @@ function Sidebar() {
   );
 }
 
-function greeting(): string {
-  const h = new Date().getHours();
-  return h < 5 ? 'Bonsoir' : h < 18 ? 'Bonjour' : 'Bonsoir';
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
-function Header() {
+/** Bouton rond de l'en-tête : translucide sur le dégradé de l'accueil, plein ailleurs. */
+function RoundLink({ to, label, icon: I, onHero, className }: { to: string; label: string; icon: LucideIcon; onHero: boolean; className?: string }) {
+  return (
+    <Link
+      to={to}
+      aria-label={label}
+      title={label}
+      className={clsx(
+        'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+        onHero ? 'bg-black/20 text-white backdrop-blur hover:bg-black/30' : 'border border-line bg-surface text-ink hover:bg-raised',
+        className,
+      )}
+    >
+      <I size={20} aria-hidden />
+    </Link>
+  );
+}
+
+function Header({ onHero }: { onHero: boolean }) {
   const profile = useBank((s) => s.state.profile);
   const simDate = useBank((s) => s.state.settings.simulationDate);
   const update = useBank((s) => s.update);
+  const setSearchOpen = useUi((s) => s.setSearchOpen);
   const theme = useResolvedTheme();
   const today = useToday();
   const unread = useUnread();
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  const transparent = onHero && !scrolled;
   return (
-    <header className="sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-xl">
-      <p className="bg-gradient-to-r from-brand-deep via-brand to-brand-deep py-1 text-center text-[10px] font-extrabold uppercase tracking-[.14em] text-white sm:text-[11px]">
+    <header className={clsx('sticky top-0 z-40 transition-colors duration-200', transparent ? 'bg-transparent' : onHero ? 'bg-[#2a1b5e]/85 backdrop-blur-xl' : 'border-b border-line/70 bg-bg/85 backdrop-blur-xl')}>
+      <p className={clsx('py-1 text-center text-[10px] font-extrabold uppercase tracking-[.14em] sm:text-[11px]', onHero ? 'bg-black/15 text-white/85' : 'bg-gradient-to-r from-brand-deep via-brand to-brand-deep text-white')}>
         Simulation bancaire — argent et crédits fictifs
       </p>
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:h-[72px] sm:px-6 lg:px-8">
-        <Link to="/" className="lg:hidden" aria-label="Accueil">
-          <LogoMark size={34} />
+      <div className="mx-auto flex h-[68px] max-w-6xl items-center gap-2.5 px-4 sm:gap-3 sm:px-6 lg:px-8">
+        <Link
+          to="/profil"
+          aria-label={`Profil de ${profile.displayName}${unread ? `, ${unread} notification(s) non lue(s)` : ''}`}
+          className={clsx('relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[15px] font-bold transition active:scale-95', onHero ? 'bg-black/25 text-white' : 'bg-brand-soft text-brand-ink')}
+        >
+          {initials(profile.displayName)}
+          {unread > 0 && <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-transparent bg-danger" />}
         </Link>
-        <Link to="/profil" className="hidden items-center gap-3 sm:flex">
-          <Avatar emoji={profile.avatarEmoji} color={profile.avatarColor} size={40} />
-          <span className="min-w-0 leading-tight">
-            <span className="block text-xs text-muted">{greeting()},</span>
-            <span className="block truncate font-bold">{profile.displayName}</span>
-          </span>
-        </Link>
-        <span className="min-w-0 truncate font-bold sm:hidden">
-          {greeting()}, {profile.displayName}
-        </span>
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          {simDate && (
-            <Link to="/parametres#horloge" className="hidden rounded-full bg-info/15 px-2.5 py-1 text-xs font-semibold text-info md:inline">
-              Horloge de test : {formatDate(today)}
-            </Link>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className={clsx(
+            'flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-full px-4 text-left text-[15px] transition',
+            onHero ? 'border border-white/20 bg-black/20 text-white/90 backdrop-blur hover:bg-black/30' : 'border border-line bg-surface text-muted hover:bg-raised',
           )}
-          <SimulationBadge />
-          <IconButton
-            icon={theme === 'dark' ? Sun : Moon}
-            label={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-            onClick={() => update((s) => ({ ...s, settings: { ...s.settings, theme: theme === 'dark' ? 'light' : 'dark' } }))}
-          />
-          <Link to="/notifications" className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl transition hover:bg-raised" aria-label={`Notifications${unread ? ` (${unread} non lues)` : ''}`}>
-            <Bell size={19} aria-hidden />
-            {unread > 0 && <span className="num absolute right-1 top-1 min-w-[18px] rounded-full bg-brand px-1 text-center text-[10px] font-bold leading-[18px] text-white">{unread > 99 ? '99+' : unread}</span>}
+        >
+          <Search size={19} aria-hidden className="shrink-0" />
+          <span className="truncate">Rechercher</span>
+          <kbd className="ml-auto hidden rounded-md border border-current/30 px-1.5 text-[10px] opacity-60 md:inline">/</kbd>
+        </button>
+        {simDate && (
+          <Link to="/parametres#horloge" className={clsx('hidden rounded-full px-2.5 py-1 text-xs font-semibold xl:inline', onHero ? 'bg-black/20 text-white' : 'bg-info/15 text-info')}>
+            Horloge : {formatDate(today)}
           </Link>
-          <Link to="/parametres" className="hidden h-10 w-10 items-center justify-center rounded-2xl transition hover:bg-raised sm:inline-flex" aria-label="Paramètres">
-            <Settings size={19} aria-hidden />
-          </Link>
-        </div>
+        )}
+        <SimulationBadge className="hidden md:inline-flex" />
+        <RoundLink to="/statistiques" label="Statistiques" icon={BarChart3} onHero={onHero} />
+        <RoundLink to="/cartes" label="Cartes virtuelles" icon={CreditCard} onHero={onHero} />
+        <RoundLink to="/notifications" label="Notifications" icon={Bell} onHero={onHero} className="hidden md:inline-flex" />
+        <button
+          type="button"
+          onClick={() => update((s) => ({ ...s, settings: { ...s.settings, theme: theme === 'dark' ? 'light' : 'dark' } }))}
+          aria-label={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+          className={clsx('hidden h-11 w-11 shrink-0 items-center justify-center rounded-full transition md:inline-flex', onHero ? 'bg-black/20 text-white hover:bg-black/30' : 'border border-line bg-surface hover:bg-raised')}
+        >
+          {theme === 'dark' ? <Sun size={19} aria-hidden /> : <Moon size={19} aria-hidden />}
+        </button>
       </div>
     </header>
   );
 }
 
+const BOTTOM_ITEMS: NavItem[] = [
+  { to: '/', label: 'Accueil', icon: Home, end: true },
+  { to: '/prets', label: 'Crédit', icon: Coins },
+  { to: '/coffres', label: 'Épargne', icon: PiggyBank },
+  { to: '/envoyer', label: 'Virements', icon: ArrowLeftRight },
+];
+
+/** Barre flottante : les libellés se replient au défilement pour libérer l'écran. */
 function BottomNav() {
-  const open = useUi((s) => s.openModal);
   const setMore = useUi((s) => s.setMoreOpen);
-  const items: NavItem[] = [
-    { to: '/', label: 'Accueil', icon: Home, end: true },
-    { to: '/cartes', label: 'Cartes', icon: CreditCard },
-  ];
-  const right: NavItem[] = [{ to: '/prets', label: 'Prêts', icon: HandCoins }];
-  const link = (item: NavItem) => (
-    <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => clsx('flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-semibold transition', isActive ? 'text-brand-ink' : 'text-muted')}>
-      <item.icon size={22} aria-hidden />
-      {item.label}
-    </NavLink>
-  );
+  const pending = useBank((s) => s.state.loanApplications.some((a) => a.status === 'pending' || a.status === 'accepted'));
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 120);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   return (
-    <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-      <div className="mx-auto flex max-w-lg items-end px-2">
-        {items.map(link)}
-        <div className="flex flex-1 justify-center">
-          <button type="button" onClick={() => open('quick')} aria-label="Actions rapides" className="-mt-5 flex h-14 w-14 items-center justify-center rounded-[20px] bg-brand text-white shadow-glow transition active:scale-95">
-            <Plus size={26} aria-hidden />
-          </button>
-        </div>
-        {right.map(link)}
-        <button type="button" onClick={() => setMore(true)} className="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-semibold text-muted">
-          <LayoutGrid size={22} aria-hidden />
-          Plus
+    <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
+      <div className="mx-auto flex max-w-md items-center gap-1 rounded-full border border-white/10 bg-[#15102b]/90 p-1.5 text-white shadow-lift backdrop-blur-xl">
+        {BOTTOM_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            aria-label={item.label}
+            className={({ isActive }) =>
+              clsx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 text-[11px] font-semibold transition-all', isActive ? 'bg-white/15 text-white' : 'text-white/65 hover:text-white')
+            }
+          >
+            <item.icon size={22} aria-hidden />
+            <span className={clsx('transition-all', compact ? 'h-0 overflow-hidden opacity-0' : 'h-4 opacity-100')}>{item.label}</span>
+            {item.to === '/prets' && pending && <span className="absolute right-[30%] top-1.5 h-2 w-2 rounded-full bg-danger" />}
+          </NavLink>
+        ))}
+        <button type="button" onClick={() => setMore(true)} aria-label="Toutes les rubriques" className="flex w-14 shrink-0 flex-col items-center justify-center rounded-full py-2 text-white/65 transition hover:text-white">
+          <ChevronsUpDown size={22} aria-hidden />
         </button>
       </div>
     </nav>
+  );
+}
+
+/** Recherche globale : rubriques, contacts, prêts et opérations. */
+function SearchModal() {
+  const open = useUi((s) => s.searchOpen);
+  const setOpen = useUi((s) => s.setSearchOpen);
+  const openModal = useUi((s) => s.openModal);
+  const state = useBank((s) => s.state);
+  const navigate = useNavigate();
+  const [q, setQ] = useState('');
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (e.key === '/' && !open && !['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) {
+        e.preventDefault();
+        setOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
+  useEffect(() => {
+    if (!open) setQ('');
+  }, [open]);
+
+  const results = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return [];
+    const out: { key: string; title: string; subtitle: string; icon: LucideIcon; run: () => void }[] = [];
+    for (const g of NAV_GROUPS)
+      for (const item of g.items)
+        if (item.label.toLowerCase().includes(term)) out.push({ key: `p${item.to}`, title: item.label, subtitle: g.title, icon: item.icon, run: () => navigate(item.to) });
+    for (const c of state.contacts)
+      if (!c.archived && c.name.toLowerCase().includes(term)) out.push({ key: `c${c.id}`, title: c.name, subtitle: `Contact fictif · ${c.handle}`, icon: Users, run: () => navigate(`/envoyer?contact=${c.id}`) });
+    for (const l of state.loans)
+      if (`${l.reference} ${l.label}`.toLowerCase().includes(term)) out.push({ key: `l${l.id}`, title: l.label, subtitle: `Prêt fictif ${l.reference}`, icon: Landmark, run: () => navigate(`/prets/${l.id}`) });
+    let n = 0;
+    for (const t of state.transactions) {
+      if (n >= 8) break;
+      if (`${t.label} ${t.note ?? ''}`.toLowerCase().includes(term)) {
+        n++;
+        out.push({ key: `t${t.id}`, title: t.label, subtitle: `${formatDate(t.date)} · ${formatMoney(t.amount, { currency: state.settings.currency, signed: true })}`, icon: History, run: () => openModal('transaction', { id: t.id }) });
+      }
+    }
+    return out.slice(0, 24);
+  }, [q, state, navigate, openModal]);
+
+  if (!open) return null;
+  const pick = (r: (typeof results)[number]) => {
+    setOpen(false);
+    r.run();
+  };
+  return (
+    <Modal open onClose={() => setOpen(false)} title="Rechercher" description="Rubriques, contacts, prêts et opérations fictives.">
+      <div className="relative">
+        <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+        <input
+          autoFocus
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && results[0]) pick(results[0]);
+          }}
+          placeholder="Ex. Prêts, Lina, Marché…"
+          className="input pl-11"
+          aria-label="Terme recherché"
+        />
+      </div>
+      <ul className="mt-3 max-h-[50dvh] overflow-y-auto">
+        {results.map((r) => (
+          <li key={r.key}>
+            <button type="button" onClick={() => pick(r)} className="flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition hover:bg-raised">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-ink">
+                <r.icon size={18} aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{r.title}</span>
+                <span className="block truncate text-xs text-muted">{r.subtitle}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+        {q.trim() && results.length === 0 && <li className="py-6 text-center text-sm text-muted">Aucun résultat pour « {q} ».</li>}
+      </ul>
+    </Modal>
   );
 }
 
@@ -336,15 +465,22 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.scrollTo({ top: 0 });
   }, [location.pathname]);
 
+  const onHero = location.pathname === '/';
   return (
     <div className="flex min-h-dvh">
       <a href="#contenu" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-brand focus:px-4 focus:py-2 focus:text-white">
         Aller au contenu
       </a>
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header />
-        <main id="contenu" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-32 pt-5 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        {onHero && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[760px] bg-[linear-gradient(180deg,#A13CF2_0%,#8A4DF7_22%,#6A4BEF_45%,#3B2590_70%,rgb(var(--bg))_100%)]"
+          />
+        )}
+        <Header onHero={onHero} />
+        <main id="contenu" className="relative mx-auto w-full max-w-6xl flex-1 px-4 pb-36 pt-5 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">
           <BootNotice />
           <div key={location.pathname} className="animate-rise">
             {children}
@@ -360,6 +496,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <BottomNav />
       <MoreSheet />
       <GlobalModals />
+      <SearchModal />
       <Toaster />
     </div>
   );

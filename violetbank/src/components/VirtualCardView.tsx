@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { Lock } from 'lucide-react';
 import { useState, type CSSProperties, type PointerEvent } from 'react';
-import { formatDate } from '../domain/dates';
+import { demoExpiry } from '../domain/cards';
 import type { VirtualCard } from '../domain/schema';
 import { useBank } from '../store/bank';
 import { LogoMark } from './Logo';
@@ -47,6 +47,7 @@ export interface CardPreview {
   demoId: string;
   createdAt: string;
   locked: boolean;
+  kind?: 'standard' | 'disposable';
 }
 
 export function VirtualCardView({ card, flippable = true, className, tilt = true }: { card: CardPreview; flippable?: boolean; className?: string; tilt?: boolean }) {
@@ -88,7 +89,10 @@ export function VirtualCardView({ card, flippable = true, className, tilt = true
               <LogoMark size={28} />
               <span className="text-sm font-bold opacity-90">{card.name}</span>
             </div>
-            <span className="rounded-md border border-current px-1.5 py-0.5 text-[10px] font-black tracking-[.2em] opacity-90">DEMO</span>
+            <span className="flex items-center gap-1.5">
+              {card.kind === 'disposable' && <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider">JETABLE</span>}
+              <span className="rounded-md border border-current px-1.5 py-0.5 text-[10px] font-black tracking-[.2em] opacity-90">DEMO</span>
+            </span>
           </div>
           <div className="mt-[7%] flex items-center gap-3">
             <Chip />
@@ -99,7 +103,7 @@ export function VirtualCardView({ card, flippable = true, className, tilt = true
             <p className="num font-mono text-[clamp(13px,4.2vw,18px)] tracking-[.18em] opacity-95">{card.demoId}</p>
             <div className="mt-1.5 flex items-end justify-between gap-2 text-[11px] uppercase tracking-wider opacity-80">
               <span className="truncate">{card.holderName}</span>
-              <span className="shrink-0">Créée le {formatDate(card.createdAt)}</span>
+              <span className="shrink-0">Exp. démo {demoExpiry(card)}</span>
             </div>
           </div>
           {card.locked && (

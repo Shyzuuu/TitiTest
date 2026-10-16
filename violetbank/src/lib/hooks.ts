@@ -90,6 +90,6 @@ export function useChartColors() {
   const theme = useResolvedTheme();
   // Palette validée (séparation daltonisme et contraste) pour chaque thème.
   return theme === 'dark'
-    ? { violet: '#8A6CFF', orange: '#C97F22', green: '#1FA872', blue: '#4F8CF5', red: '#E0566A', grid: '#2C2B36', axis: '#A0A0AC', surface: '#19191F' }
+    ? { violet: '#8A6CFF', orange: '#C97F22', green: '#1FA872', blue: '#4F8CF5', red: '#E0566A', grid: '#3C3364', axis: '#B2AACE', surface: '#231C40' }
     : { violet: '#7656F6', orange: '#D6851F', green: '#1E9E66', blue: '#4285F4', red: '#D93A50', grid: '#ECEAF3', axis: '#7A7A86', surface: '#FFFFFF' };
 }

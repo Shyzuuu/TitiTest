@@ -71,6 +71,29 @@ describe('cartes (scénario B)', () => {
     expect(accountBalance(s, 'acc_main')).toBe(19_000);
   });
 
+  it('carte jetable : identifiant régénéré après chaque dépense, pas après un refus', () => {
+    const c = unwrap(createCard(freshState(D, 50_000), ctxAt(D), { name: 'Jetable', accountId: 'acc_main', color: '#2B2B35', accent: '#7656F6', style: 'metal', avatar: null, monthlyLimit: null, locked: false, kind: 'disposable' }));
+    const first = c.data.demoId;
+    const s1 = unwrap(recordExpense(c.state, ctxAt(D), { accountId: 'acc_main', cardId: c.data.id, amount: 1_000, merchant: 'A', category: 'food' })).state;
+    const after = s1.cards.find((x) => x.id === c.data.id)!;
+    expect(after.demoId).not.toBe(first);
+    expect(after.regenerations).toBe(1);
+    const locked = unwrap(setCardLock(s1, ctxAt(D), c.data.id, true)).state;
+    const refused = recordExpense(locked, ctxAt(D), { accountId: 'acc_main', cardId: c.data.id, amount: 1_000, merchant: 'B', category: 'food' });
+    expect(refused.state?.cards.find((x) => x.id === c.data.id)?.demoId).toBe(after.demoId);
+  });
+
+  it('données antérieures sans type de carte : valeur par défaut « standard »', () => {
+    const s = createDemoState('2026-10-16');
+    const raw = JSON.parse(JSON.stringify(s));
+    for (const card of raw.cards) {
+      delete card.kind;
+      delete card.regenerations;
+    }
+    const res = validateState(raw);
+    expect(res.ok && res.state.cards.every((c) => c.kind === 'standard' && c.regenerations === 0)).toBe(true);
+  });
+
   it('plafond mensuel de test', () => {
     const c = unwrap(createCard(freshState(D, 50_000), ctxAt(D), { name: 'Plafond', accountId: 'acc_main', color: '#7656F6', accent: '#4930B5', style: 'minimal', avatar: null, monthlyLimit: 5_000, locked: false }));
     const ok1 = unwrap(recordExpense(c.state, ctxAt(D), { accountId: 'acc_main', cardId: c.data.id, amount: 4_000, merchant: 'A', category: 'food' }));

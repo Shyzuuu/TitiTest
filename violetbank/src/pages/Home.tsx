@@ -1,178 +1,469 @@
-import { ArrowDownLeft, ArrowDownToLine, ArrowLeftRight, CalendarClock, CreditCard, Eye, EyeOff, HandCoins, History, Landmark, ListOrdered, PiggyBank, Plus, Receipt, Send, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
-import { useMemo } from 'react';
+import clsx from 'clsx';
+import {
+  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChartPie, ChevronRight, Coins, CreditCard, Eye, EyeOff, HandCoins, Info, LayoutGrid, MoreHorizontal, PiggyBank, Plus,
+  Settings2, Target, Users, type LucideIcon,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
-import { TransactionRow } from '../components/Transactions';
-import { VirtualCardView } from '../components/VirtualCardView';
-import { Badge, Button, Card, EmptyState, SectionTitle, SeeAll, StatTile } from '../components/ui';
-import { formatDate } from '../domain/dates';
-import { dashboardSummary } from '../domain/selectors';
-import { useBalances, useBankState, useMoney, useToday } from '../lib/hooks';
+import { Button, EmptyState, Modal, Switch } from '../components/ui';
+import { createCard } from '../domain/cards';
+import { getCategory } from '../domain/categories';
+import { effectiveType, isPosted } from '../domain/core';
+import { daysInMonth, formatDate, formatTime, monthKey } from '../domain/dates';
+import type { Transaction, VirtualCard } from '../domain/schema';
+import { dashboardSummary, ORDINARY_OUT_TYPES } from '../domain/selectors';
+import { useActiveAccounts, useBalances, useBankState, useMoney, useToday } from '../lib/hooks';
+import { readPreference, writePreference } from '../store/storage';
 import { useBank } from '../store/bank';
 import { useUi } from '../store/ui';
+
+const WIDGETS = [
+  { key: 'discover', label: 'Découvrir VioletBank' },
+  { key: 'activity', label: 'Activité récente' },
+  { key: 'vaults', label: 'Coffres' },
+  { key: 'learn', label: 'En savoir plus' },
+  { key: 'products', label: 'Produits fictifs' },
+  { key: 'spending', label: 'Dépenses du mois' },
+  { key: 'cards', label: 'Cartes' },
+  { key: 'wealth', label: 'Patrimoine net' },
+] as const;
+type WidgetKey = (typeof WIDGETS)[number]['key'];
+
+function useHiddenWidgets() {
+  const [hidden, setHidden] = useState<WidgetKey[]>(() => {
+    try {
+      const v = JSON.parse(readPreference('home-widgets-hidden', '[]'));
+      return Array.isArray(v) ? v.filter((k): k is WidgetKey => WIDGETS.some((w) => w.key === k)) : [];
+    } catch {
+      return [];
+    }
+  });
+  const toggle = (key: WidgetKey, visible: boolean) =>
+    setHidden((h) => {
+      const next = visible ? h.filter((k) => k !== key) : [...new Set([...h, key])];
+      writePreference('home-widgets-hidden', JSON.stringify(next));
+      return next;
+    });
+  return { hidden, toggle };
+}
+
+/** Solde en grand avec les centimes réduits, à partir du texte déjà formaté. */
+function BigAmount({ text }: { text: string }) {
+  const m = /^(.*?)([,.]\d{2})(\s*\S+)$/.exec(text);
+  if (!m) return <>{text}</>;
+  return (
+    <>
+      {m[1]}
+      <span className="text-[0.55em] align-[0.62em]">{m[2]}</span>
+      <span className="ml-1 text-[0.55em] align-[0.62em]">{m[3]?.trim()}</span>
+    </>
+  );
+}
+
+function Widget({ title, to, children, className }: { title?: string; to?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={clsx('rounded-[28px] border border-line/60 bg-surface p-5 shadow-soft', className)}>
+      {title &&
+        (to ? (
+          <Link to={to} className="mb-3 inline-flex items-center gap-1 text-[15px] font-semibold text-muted hover:text-ink">
+            {title} <ChevronRight size={17} aria-hidden />
+          </Link>
+        ) : (
+          <h2 className="mb-3 text-[15px] font-semibold text-muted">{title}</h2>
+        ))}
+      {children}
+    </section>
+  );
+}
+
+function ActivityRow({ tx }: { tx: Transaction }) {
+  const money = useMoney();
+  const open = useUi((s) => s.openModal);
+  const state = useBankState();
+  const contact = tx.contactId ? state.contacts.find((c) => c.id === tx.contactId) : undefined;
+  const cat = getCategory(tx.category, state.customCategories);
+  const declined = tx.status === 'declined';
+  return (
+    <button type="button" onClick={() => open('transaction', { id: tx.id })} className="flex w-full items-center gap-3.5 rounded-2xl py-2.5 text-left transition hover:bg-raised/60">
+      <span className="relative shrink-0">
+        {contact ? (
+          <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-bold" style={{ borderColor: contact.color, color: contact.color }}>
+            {contact.name.split(' ').map((p) => p[0]).join('').slice(0, 2)}
+          </span>
+        ) : (
+          <span className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: `${cat.color}26`, color: cat.color }}>
+            <Icon name={cat.icon} size={20} />
+          </span>
+        )}
+        {(tx.type === 'p2p_in' || tx.type === 'p2p_out' || tx.type === 'transfer_in' || tx.type === 'transfer_out') && (
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-bg">
+            {tx.amount > 0 ? <ArrowDownLeft size={12} aria-hidden /> : <ArrowUpRight size={12} aria-hidden />}
+          </span>
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={clsx('block truncate text-[16px] font-semibold', declined && 'text-muted line-through')}>{tx.label}</span>
+        <span className="block text-sm text-muted">
+          {formatDate(tx.date).slice(0, 6)}, {formatTime(tx.date).replace('h', ':')}
+          {declined && ' · refusée'}
+        </span>
+      </span>
+      <span className={clsx('num shrink-0 text-[16px] font-semibold', declined ? 'text-muted line-through' : tx.amount > 0 ? 'text-ok' : 'text-ink')}>{money(tx.amount, { signed: true })}</span>
+    </button>
+  );
+}
+
+function ProgressRing({ value, total }: { value: number; total: number }) {
+  const r = 22;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0" role="img" aria-label={`${value} étapes sur ${total}`}>
+      <circle cx="28" cy="28" r={r} fill="none" stroke="rgb(var(--line))" strokeWidth="4" />
+      <circle cx="28" cy="28" r={r} fill="none" stroke="rgb(var(--brand))" strokeWidth="4" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - value / total)} transform="rotate(-90 28 28)" className="transition-[stroke-dashoffset] duration-700" />
+      <text x="28" y="33" textAnchor="middle" fontSize="13" fontWeight="700" fill="currentColor">
+        {value}/{total}
+      </text>
+    </svg>
+  );
+}
+
+/** Courbe cumulée des dépenses courantes du mois ; pointillés après la date du jour. */
+function SpendingSparkline({ today }: { today: string }) {
+  const state = useBankState();
+  const money = useMoney();
+  const month = monthKey(today);
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  const days = daysInMonth(y, m);
+  const todayDay = Number(today.slice(8, 10));
+  const daily = useMemo(() => {
+    const arr = new Array<number>(days + 1).fill(0);
+    for (const tx of state.transactions) {
+      if (!isPosted(tx) || monthKey(tx.date) !== month || !ORDINARY_OUT_TYPES.has(effectiveType(tx))) continue;
+      const d = Number(tx.date.slice(8, 10));
+      if (d <= todayDay) arr[d] = (arr[d] ?? 0) - tx.amount;
+    }
+    return arr;
+  }, [state.transactions, month, days, todayDay]);
+  const cumulative: number[] = [];
+  let acc = 0;
+  for (let d = 1; d <= todayDay; d++) {
+    acc += daily[d] ?? 0;
+    cumulative.push(acc);
+  }
+  const total = Math.max(0, acc);
+  const W = 320;
+  const H = 110;
+  const max = Math.max(1, total);
+  const x = (d: number) => ((d - 1) / Math.max(1, days - 1)) * W;
+  const yv = (v: number) => H - 8 - (Math.max(0, v) / max) * (H - 24);
+  const pts = cumulative.map((v, i) => `${x(i + 1).toFixed(1)},${yv(v).toFixed(1)}`).join(' ');
+  const lastX = x(todayDay);
+  const lastY = yv(total);
+  const ticks = [1, 6, 11, 16, 21, 26, days].filter((d, i, a) => d <= days && a.indexOf(d) === i);
+  return (
+    <div>
+      <p className="num text-4xl font-extrabold tracking-tight">{money(total, { sensitive: true, compact: total % 100 === 0 })}</p>
+      <div className="relative mt-3">
+        <span className="num absolute right-0 top-0 text-sm font-semibold text-muted">{money(total, { sensitive: true, compact: true })}</span>
+        <svg viewBox={`0 0 ${W} ${H}`} className="h-28 w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label={`Dépenses cumulées du mois : ${money(total)}`}>
+          <defs>
+            <linearGradient id="spend-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="rgb(var(--brand))" stopOpacity=".28" />
+              <stop offset="1" stopColor="rgb(var(--brand))" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((f) => (
+            <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="rgb(var(--line))" strokeWidth="1" />
+          ))}
+          <rect x={lastX} y={lastY} width={W - lastX} height={H - 8 - lastY} fill="url(#spend-fill)" />
+          <polyline points={pts} fill="none" stroke="rgb(var(--ink))" strokeWidth="2.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          <line x1={lastX} x2={W} y1={lastY} y2={lastY} stroke="rgb(var(--muted))" strokeWidth="2" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <div className="mt-1 flex justify-between text-sm text-muted">
+          {ticks.map((t) => (
+            <span key={t} className="num">
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniCard({ card }: { card: VirtualCard }) {
+  return (
+    <div className="relative aspect-[1.586] w-full overflow-hidden rounded-lg shadow-soft" style={{ background: card.style === 'minimal' ? card.color : `linear-gradient(135deg, ${card.color}, ${card.accent})` }}>
+      <span className="absolute right-1.5 top-1 text-[8px] font-black tracking-widest text-white/85">DEMO</span>
+      {card.kind === 'disposable' && <span className="absolute left-1.5 top-1 rounded bg-white/25 px-1 text-[7px] font-bold text-white">1×</span>}
+      <span className="absolute bottom-1.5 right-1.5 flex">
+        <span className="h-3 w-3 rounded-full bg-white/70" />
+        <span className="-ml-1.5 h-3 w-3 rounded-full bg-white/35" />
+      </span>
+      {card.locked && <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-[10px] font-bold text-white">Verrouillée</span>}
+    </div>
+  );
+}
+
+function ProductRow({ to, icon: I, color, title, text }: { to: string; icon: LucideIcon; color: string; title: string; text: string }) {
+  return (
+    <Link to={to} className="flex items-center gap-4 rounded-2xl py-3 transition hover:bg-raised/60">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white" style={{ background: color }}>
+        <I size={22} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[17px] font-semibold">{title}</span>
+        <span className="block text-sm text-muted">{text}</span>
+      </span>
+      <ChevronRight size={20} className="shrink-0 text-muted" aria-hidden />
+    </Link>
+  );
+}
 
 export function Home() {
   const state = useBankState();
   const today = useToday();
   const money = useMoney();
   const balances = useBalances();
+  const accounts = useActiveAccounts();
   const update = useBank((s) => s.update);
+  const act = useBank((s) => s.act);
   const open = useUi((s) => s.openModal);
+  const setMore = useUi((s) => s.setMoreOpen);
   const navigate = useNavigate();
+  const { hidden, toggle } = useHiddenWidgets();
+  const [managing, setManaging] = useState(false);
   const summary = useMemo(() => dashboardSummary(state, today), [state, today]);
-  const hidden = state.settings.balanceHidden;
-  const recent = state.transactions.slice(0, 6);
+  const hiddenBalance = state.settings.balanceHidden;
   const cards = state.cards.filter((c) => !c.deletedAt);
-  const accounts = state.accounts.filter((a) => !a.archived);
+  const vaults = state.vaults.filter((v) => !v.archived);
+  const show = (k: WidgetKey) => !hidden.includes(k);
 
-  const toggleHidden = () => update((s) => ({ ...s, settings: { ...s.settings, balanceHidden: !s.settings.balanceHidden } }));
+  const steps = [
+    { label: 'Ajouter des fonds de test', done: state.transactions.some((t) => t.type === 'deposit'), run: () => open('deposit') },
+    { label: 'Créer une carte virtuelle', done: cards.length > 0, run: () => navigate('/cartes?nouvelle=1') },
+    { label: 'Ouvrir un coffre', done: vaults.length > 0, run: () => navigate('/coffres?nouveau=1') },
+    { label: 'Simuler un prêt', done: state.loanApplications.length > 0, run: () => navigate('/prets/simulateur') },
+  ];
+  const doneCount = steps.filter((s) => s.done).length;
+  const nextStep = steps.find((s) => !s.done);
 
-  const quick = [
-    { label: 'Ajouter des fonds', icon: Plus, onClick: () => open('deposit') },
-    { label: 'Nouvelle carte', icon: CreditCard, onClick: () => navigate('/cartes?nouvelle=1') },
-    { label: 'Transfert', icon: ArrowLeftRight, onClick: () => open('transfer') },
-    { label: 'Dépense', icon: Receipt, onClick: () => open('expense') },
-    { label: 'Créer un coffre', icon: PiggyBank, onClick: () => navigate('/coffres?nouveau=1') },
-    { label: 'Demander un prêt', icon: HandCoins, onClick: () => navigate('/prets/nouvelle') },
-    { label: 'Rembourser', icon: Landmark, onClick: () => navigate('/prets/remboursement') },
-    { label: 'Historique', icon: History, onClick: () => navigate('/historique') },
+  const createDisposable = () => {
+    const accountId = accounts[0]?.id;
+    if (!accountId) return;
+    const res = act((s, ctx) => createCard(s, ctx, { name: 'Jetable', accountId, color: '#2B2B35', accent: '#7656F6', style: 'metal', avatar: null, monthlyLimit: null, locked: false, kind: 'disposable' }), { success: 'Carte jetable générée : son identifiant change après chaque dépense simulée.' });
+    if (res.ok) navigate('/cartes');
+  };
+  const disposable = cards.find((c) => c.kind === 'disposable');
+  const net = summary.available + summary.inVaults - summary.loanOutstanding;
+  const balanceText = money(summary.available, { sensitive: true });
+
+  const heroActions = [
+    { label: 'Ajouter de l’argent', icon: Plus, onClick: () => open('deposit') },
+    { label: 'Entre mes comptes', icon: ArrowLeftRight, onClick: () => open('transfer') },
+    { label: 'Infos comptes', aria: 'Informations sur les comptes', icon: Info, onClick: () => navigate('/comptes') },
+    { label: 'Plus', aria: 'Actions rapides', icon: MoreHorizontal, onClick: () => open('quick') },
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Solde principal */}
-      <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#8B70FF] via-brand to-brand-deep p-6 text-white shadow-glow sm:p-8" aria-labelledby="balance-title">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 left-10 h-72 w-72 rounded-full bg-[#4930B5]/60 blur-3xl" />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-2">
-            <p id="balance-title" className="text-sm font-semibold text-white/80">
-              Argent disponible fictif · {accounts.length} compte{accounts.length > 1 ? 's' : ''}
-            </p>
-            <button type="button" onClick={toggleHidden} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/25" aria-pressed={hidden}>
-              {hidden ? <Eye size={14} aria-hidden /> : <EyeOff size={14} aria-hidden />}
-              {hidden ? 'Afficher' : 'Masquer'}
-            </button>
-          </div>
-          <p className="num mt-2 text-[40px] font-extrabold leading-none tracking-tight sm:text-6xl" data-testid="main-balance">
-            {money(summary.available, { sensitive: true })}
-          </p>
-          <p className="mt-3 text-sm text-white/75">
-            + {money(summary.inVaults, { sensitive: true })} dans les coffres
-            {summary.loanOutstanding > 0 && <> · dette fictive {money(summary.loanOutstanding, { sensitive: true })} (non incluse)</>}
-          </p>
-          <div className="mt-6 grid grid-cols-5 gap-2 sm:flex sm:flex-wrap">
-            {[
-              { label: 'Ajouter', icon: ArrowDownToLine, onClick: () => open('deposit') },
-              { label: 'Envoyer', icon: Send, onClick: () => navigate('/envoyer') },
-              { label: 'Recevoir', icon: ArrowDownLeft, onClick: () => navigate('/recevoir') },
-              { label: 'Prêts', icon: HandCoins, onClick: () => navigate('/prets') },
-              { label: 'Détails', icon: ListOrdered, onClick: () => navigate('/comptes') },
-            ].map((a) => (
-              <button key={a.label} type="button" onClick={a.onClick} className="flex flex-col items-center gap-1.5 rounded-2xl text-xs font-semibold sm:flex-row sm:bg-white/15 sm:px-4 sm:py-2.5 sm:text-sm sm:hover:bg-white/25">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur transition hover:bg-white/30 sm:h-auto sm:w-auto sm:bg-transparent">
-                  <a.icon size={20} aria-hidden />
-                </span>
-                {a.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Résumé financier */}
-      <section aria-label="Résumé financier" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Disponible" value={money(summary.available, { sensitive: true })} icon={Wallet} to="/comptes" hint="Somme des comptes actifs" />
-        <StatTile label="Dans les coffres" value={money(summary.inVaults, { sensitive: true })} icon={PiggyBank} tone="ok" to="/coffres" />
-        <StatTile label="Entrées du mois" value={money(summary.monthIn, { sensitive: true })} icon={TrendingUp} tone="ok" to="/statistiques" hint="Hors crédits simulés" />
-        <StatTile label="Dépenses du mois" value={money(summary.monthOut, { sensitive: true })} icon={TrendingDown} tone="danger" to="/statistiques" hint={summary.monthLoanOut ? `+ ${money(summary.monthLoanOut)} de remboursements` : 'Hors remboursements'} />
-        <StatTile label="Prêts en cours (dû)" value={money(summary.loanOutstanding, { sensitive: true })} icon={Landmark} tone="warn" to="/prets/mes-prets" hint="Dette fictive, non disponible" />
-        <StatTile
-          label="Prochaine échéance"
-          value={summary.nextDue ? money(summary.nextDue.installment.amount - summary.nextDue.installment.paidInterest - summary.nextDue.installment.paidPrincipal) : '—'}
-          icon={CalendarClock}
-          tone="info"
-          to="/prets/calendrier"
-          hint={summary.nextDue ? `${formatDate(summary.nextDue.installment.dueDate)} · ${summary.nextDue.loan.reference}` : 'Aucun prêt actif'}
-        />
-        <StatTile label="Transactions" value={summary.txCount} icon={ListOrdered} tone="neutral" to="/historique" hint="Opérations effectuées" />
-        <StatTile label="Cartes virtuelles" value={summary.cardCount} icon={CreditCard} tone="brand" to="/cartes" hint={`${cards.filter((c) => c.locked).length} verrouillée(s)`} />
-      </section>
-
-      {/* Actions rapides */}
-      <section>
-        <SectionTitle title="Actions rapides" />
-        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none sm:grid sm:grid-cols-4 lg:grid-cols-8">
-          {quick.map((q) => (
-            <button key={q.label} type="button" onClick={q.onClick} className="card flex min-w-[104px] flex-col items-center gap-2 p-4 text-center text-[13px] font-semibold transition hover:-translate-y-0.5 hover:shadow-lift">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-soft text-brand-ink">
-                <q.icon size={20} aria-hidden />
+    <div className="mx-auto max-w-2xl">
+      {/* Solde principal sur le dégradé plein écran */}
+      <section className="flex min-h-[440px] flex-col items-center pt-6 text-center text-white sm:min-h-[480px]" aria-labelledby="balance-title">
+        <p id="balance-title" className="text-[17px] font-semibold text-white/90">
+          Personnel · {state.settings.currency}
+        </p>
+        <button type="button" onClick={() => update((s) => ({ ...s, settings: { ...s.settings, balanceHidden: !s.settings.balanceHidden } }))} className="group mt-1 rounded-2xl px-3" aria-label={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'} title={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'}>
+          <span className="num block text-[64px] font-extrabold leading-tight tracking-tight sm:text-[76px]" data-testid="main-balance">
+            {hiddenBalance ? balanceText : <BigAmount text={balanceText} />}
+          </span>
+        </button>
+        <p className="mt-1 flex items-center gap-2 text-[15px] font-medium text-white/85">
+          {hiddenBalance ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+          Identifiant démo {state.profile.demoHandle}
+        </p>
+        {summary.loanOutstanding > 0 && <p className="mt-1 text-xs text-white/70">Dette fictive {money(summary.loanOutstanding, { sensitive: true })} non incluse</p>}
+        <Link to="/comptes" className="mt-auto rounded-full bg-white/25 px-6 py-3 text-[16px] font-semibold text-white backdrop-blur transition hover:bg-white/35">
+          Comptes et coffres
+        </Link>
+        <div className="mt-6 grid w-full grid-cols-4 gap-2 pb-6">
+          {heroActions.map((a) => (
+            <button key={a.label} type="button" onClick={a.onClick} aria-label={a.aria} className="flex flex-col items-center gap-2 text-[14px] font-semibold leading-tight text-white">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/25 backdrop-blur transition active:scale-95 hover:bg-white/35">
+                <a.icon size={24} aria-hidden />
               </span>
-              {q.label}
+              <span className="max-w-[92px]">{a.label}</span>
             </button>
           ))}
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Activité récente */}
-        <Card className="p-4 sm:p-5 lg:col-span-3">
-          <SectionTitle title="Activité récente" action={<SeeAll to="/historique" />} />
-          {recent.length ? (
-            <div>
-              {recent.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} />
+      <div className="space-y-4">
+        {show('discover') && (
+          <Widget>
+            <div className="flex gap-4">
+              <ProgressRing value={doneCount} total={steps.length} />
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold leading-snug">{doneCount === steps.length ? 'Vous maîtrisez la simulation 🎉' : `Découvrez davantage de fonctionnalités ${state.settings.appName}`}</h2>
+                <p className="mt-0.5 text-[15px] text-muted">{nextStep ? `Prochaine étape : ${nextStep.label.toLowerCase()}.` : 'Toutes les étapes de découverte sont terminées.'}</p>
+              </div>
+            </div>
+            {nextStep ? (
+              <Button variant="dark" className="mt-4 rounded-full" block size="lg" onClick={nextStep.run}>
+                {doneCount === 0 ? 'Démarrer' : 'Continuer'}
+              </Button>
+            ) : (
+              <Button className="mt-4 rounded-full" variant="secondary" block onClick={() => toggle('discover', false)}>
+                Masquer ce widget
+              </Button>
+            )}
+          </Widget>
+        )}
+
+        {show('activity') && (
+          <Widget>
+            {state.transactions.length ? (
+              <>
+                {state.transactions.slice(0, 3).map((tx) => (
+                  <ActivityRow key={tx.id} tx={tx} />
+                ))}
+                <Link to="/historique" className="mt-2 block py-2 text-center text-[16px] font-bold">
+                  Tout afficher
+                </Link>
+              </>
+            ) : (
+              <EmptyState icon={ArrowLeftRight} title="Aucune opération" action={<Button onClick={() => open('deposit')}>Ajouter des fonds de test</Button>} />
+            )}
+          </Widget>
+        )}
+
+        {show('vaults') && (
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+            {vaults.map((v) => (
+              <Link key={v.id} to="/coffres" className="flex w-40 shrink-0 flex-col items-center rounded-[28px] border border-line/60 bg-surface p-4 text-center shadow-soft">
+                <span className="relative flex h-16 w-16 items-center justify-center rounded-full text-white" style={{ background: v.color }}>
+                  <Icon name={v.icon} size={26} />
+                </span>
+                <span className="-mt-2 max-w-full truncate rounded-full bg-ink px-3 py-0.5 text-xs font-semibold text-bg">{v.name}</span>
+                <span className="num mt-2 text-lg font-bold">{money(balances.vaults.get(v.id) ?? 0, { sensitive: true })}</span>
+              </Link>
+            ))}
+            <Link to="/coffres?nouveau=1" className="flex w-40 shrink-0 flex-col items-center justify-center gap-3 rounded-[28px] border border-dashed border-line bg-surface/60 p-4 text-sm font-semibold text-muted">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-raised text-ink">
+                <Plus size={22} aria-hidden />
+              </span>
+              Nouveau coffre
+            </Link>
+          </div>
+        )}
+
+        {show('learn') && (
+          <Widget title="En savoir plus" to="/aide">
+            {[
+              { icon: HandCoins, title: 'Prêt fictif', text: 'Obtenez une estimation simulée en quelques secondes.', cta: 'Demander', run: () => navigate('/prets/simulateur') },
+              { icon: PiggyBank, title: 'Coffres', text: 'Mettez de côté de l’argent de test vers un objectif.', cta: 'Ouvrir', run: () => navigate('/coffres?nouveau=1') },
+              disposable
+                ? { icon: CreditCard, title: 'Carte jetable', text: `Identifiant régénéré ${disposable.regenerations} fois.`, cta: 'Voir', run: () => navigate('/cartes') }
+                : { icon: CreditCard, title: 'Carte jetable', text: 'Un identifiant de démonstration neuf après chaque paiement.', cta: 'Générer', run: createDisposable },
+            ].map((r) => (
+              <div key={r.title} className="flex items-center gap-4 py-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-raised">
+                  <r.icon size={22} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[17px] font-semibold">{r.title}</span>
+                  <span className="block text-sm text-muted">{r.text}</span>
+                </span>
+                <button type="button" onClick={r.run} className="shrink-0 rounded-full bg-raised px-5 py-2.5 text-[15px] font-semibold transition hover:bg-line">
+                  {r.cta}
+                </button>
+              </div>
+            ))}
+            <Button variant="dark" className="mt-3 rounded-full" block size="lg" onClick={() => setMore(true)}>
+              Toutes les rubriques
+            </Button>
+          </Widget>
+        )}
+
+        {show('products') && (
+          <Widget>
+            <ProductRow to="/coffres" icon={PiggyBank} color="#F07A3A" title="Épargne et coffres" text="Objectifs d’épargne fictifs, sans intérêts réels." />
+            <ProductRow to="/prets" icon={Coins} color="#3FC24A" title="Prêts" text="Simulateur, demandes et remboursements fictifs." />
+            <ProductRow to="/statistiques" icon={ChartPie} color="#3AA6F5" title="Statistiques" text="Analysez vos flux de démonstration." />
+            <ProductRow to="/budgets" icon={Target} color="#B04AF0" title="Budgets" text="Fixez des plafonds par catégorie." />
+            <ProductRow to="/contacts" icon={Users} color="#22C3C7" title="Contacts fictifs" text="Envoyez et recevez de l’argent de test." />
+          </Widget>
+        )}
+
+        {show('spending') && (
+          <Widget title="Dépenses du mois" to="/statistiques">
+            <SpendingSparkline today={today} />
+          </Widget>
+        )}
+
+        {show('cards') && (
+          <Widget title="Cartes" to="/cartes">
+            <div className="grid grid-cols-3 gap-4">
+              {!disposable && (
+                <button type="button" onClick={createDisposable} className="text-center">
+                  <div className="flex aspect-[1.586] w-full items-center justify-center rounded-lg border border-dashed border-line bg-raised">
+                    <Plus size={20} aria-hidden />
+                  </div>
+                  <p className="mt-2 font-semibold">Jetable</p>
+                  <p className="text-sm text-muted">Générer</p>
+                </button>
+              )}
+              {cards.slice(0, disposable ? 6 : 5).map((c) => (
+                <Link key={c.id} to="/cartes" className="text-center">
+                  <MiniCard card={c} />
+                  <p className="mt-2 truncate font-semibold">{c.name}</p>
+                  <p className="num text-sm text-muted">··{c.demoId.slice(-4)}</p>
+                </Link>
               ))}
             </div>
-          ) : (
-            <EmptyState icon={History} title="Aucune opération" action={<Button onClick={() => open('deposit')}>Ajouter des fonds de test</Button>}>
-              Ajoutez de l’argent fictif pour commencer la simulation.
-            </EmptyState>
-          )}
-        </Card>
+          </Widget>
+        )}
 
-        <div className="space-y-6 lg:col-span-2">
-          <Card className="p-5">
-            <SectionTitle title="Mes cartes" action={<SeeAll to="/cartes" />} />
-            {cards[0] ? (
-              <Link to="/cartes" aria-label="Gérer mes cartes">
-                <VirtualCardView card={cards[0]} flippable={false} />
-              </Link>
-            ) : (
-              <EmptyState icon={CreditCard} title="Aucune carte" action={<Button onClick={() => navigate('/cartes?nouvelle=1')}>Créer une carte</Button>} />
-            )}
-          </Card>
-          <Card className="p-5">
-            <SectionTitle title="Comptes" action={<SeeAll to="/comptes" />} />
-            <ul className="space-y-1">
-              {accounts.map((a) => (
-                <li key={a.id}>
-                  <Link to="/comptes" className="flex items-center gap-3 rounded-2xl p-2 transition hover:bg-raised">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl text-white" style={{ background: a.color }}>
-                      <Icon name={a.icon} size={18} />
-                    </span>
-                    <span className="flex-1 truncate font-semibold">{a.name}</span>
-                    <span className="num font-bold">{money(balances.accounts.get(a.id) ?? 0, { sensitive: true })}</span>
-                  </Link>
+        {show('wealth') && (
+          <Widget title="Patrimoine net fictif" to="/comptes">
+            <p className="num text-4xl font-extrabold tracking-tight">{money(net, { sensitive: true })}</p>
+            <ul className="mt-3 space-y-1">
+              {[
+                { icon: CreditCard, color: '#4285F4', label: 'Espèces (comptes)', value: summary.available },
+                { icon: PiggyBank, color: '#26B879', label: 'Coffres', value: summary.inVaults },
+                { icon: HandCoins, color: '#E44F62', label: 'Prêts fictifs (dû)', value: -summary.loanOutstanding },
+              ].map((r) => (
+                <li key={r.label} className="flex items-center gap-3 py-1.5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full text-white" style={{ background: r.color }}>
+                    <r.icon size={18} aria-hidden />
+                  </span>
+                  <span className="flex-1 font-medium">{r.label}</span>
+                  <span className="num font-semibold">{money(r.value, { sensitive: true })}</span>
                 </li>
               ))}
             </ul>
-          </Card>
-          {summary.nextDue && (
-            <Card className="p-5">
-              <SectionTitle title="Prochaine échéance fictive" action={<Badge tone="info">Simulation</Badge>} />
-              <p className="text-sm text-muted">
-                {summary.nextDue.loan.label} · échéance n°{summary.nextDue.installment.index}
-              </p>
-              <p className="num mt-1 text-2xl font-bold">{money(summary.nextDue.installment.amount - summary.nextDue.installment.paidInterest - summary.nextDue.installment.paidPrincipal)}</p>
-              <p className="text-sm text-muted">le {formatDate(summary.nextDue.installment.dueDate, 'long')}</p>
-              <Button className="mt-4" block variant="soft" onClick={() => navigate(`/prets/remboursement?pret=${summary.nextDue?.loan.id}`)}>
-                Simuler le remboursement
-              </Button>
-            </Card>
-          )}
+          </Widget>
+        )}
+
+        <div className="flex justify-center pt-2">
+          <button type="button" onClick={() => setManaging(true)} className="inline-flex items-center gap-2 rounded-full bg-surface px-6 py-3 text-[16px] font-semibold shadow-soft transition hover:bg-raised">
+            <Settings2 size={18} aria-hidden /> Gérer les widgets
+          </button>
         </div>
       </div>
+
+      {managing && (
+        <Modal open onClose={() => setManaging(false)} title="Widgets de l’accueil" description="Préférence enregistrée sur cet appareil.">
+          <div className="divide-y divide-line">
+            {WIDGETS.map((w) => (
+              <Switch key={w.key} checked={show(w.key)} onChange={(v) => toggle(w.key, v)} label={w.label} />
+            ))}
+          </div>
+          <Button className="mt-4" block onClick={() => setManaging(false)} icon={LayoutGrid}>
+            Terminé
+          </Button>
+        </Modal>
+      )}
     </div>
   );
 }

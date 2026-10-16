@@ -19,7 +19,7 @@ Au premier lancement, un jeu de données d’exemple est généré (3 mois d’o
 ## Tests
 
 ```bash
-npm test                 # Vitest : moteur financier et règles métier (55 tests)
+npm test                 # Vitest : moteur financier et règles métier (57 tests)
 npm run typecheck
 PW_CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e   # Playwright : scénarios A à G + mobile
 ```
@@ -30,7 +30,7 @@ PW_CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e   # Playwright : scénario
 |---|---|
 | `test/loanMath.test.ts` | formule de mensualité, taux nul, arrondis, dernière échéance, capital constant, mensualité imposée, dates de fin de mois |
 | `test/loans.test.ts` | décision (limites, motif, mode manuel, avertissement de solde), activation unique, rechargement, paiement en double, ordre des échéances, solde insuffisant, partiel, total, anticipé (durée / mensualité, frais), contrepassation, révision, report, annulation, rappels, invariant capital |
-| `test/ledger.test.ts` | dépôts, montants invalides, virements, cartes verrouillées et plafonds, coffres, budgets, jeu d’exemple, données corrompues |
+| `test/ledger.test.ts` | dépôts, montants invalides, virements, cartes verrouillées, plafonds et cartes jetables, coffres, budgets, jeu d’exemple, données corrompues |
 | `e2e/scenarios.spec.ts` | A (dépôt + actualisation), B (carte), C–F (prêt de bout en bout avec double-clics), G (erreurs) |
 | `e2e/mobile.spec.ts` | 25 pages sans débordement horizontal ni erreur JS, navigation mobile |
 

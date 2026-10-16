@@ -41,6 +41,9 @@ export const cardSchema = z.object({
   style: cardStyleSchema,
   avatar: shortText(8).nullable(),
   demoId: shortText(32),
+  /** Carte jetable : identifiant de démonstration régénéré après chaque dépense. Défaut pour les données antérieures. */
+  kind: z.enum(['standard', 'disposable']).default('standard'),
+  regenerations: z.number().int().nonnegative().default(0),
   monthlyLimit: positiveCents.nullable(),
   locked: z.boolean(),
   createdAt: localDateTime,
@@ -357,6 +360,7 @@ export type Account = z.infer<typeof accountSchema>;
 export type AccountKind = z.infer<typeof accountKindSchema>;
 export type VirtualCard = z.infer<typeof cardSchema>;
 export type CardStyle = z.infer<typeof cardStyleSchema>;
+export type CardKind = VirtualCard['kind'];
 export type TxType = z.infer<typeof txTypeSchema>;
 export type Transaction = z.infer<typeof transactionSchema>;
 export type Contact = z.infer<typeof contactSchema>;

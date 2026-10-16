@@ -24,7 +24,7 @@ export async function resetToEmpty(page: Page) {
 
 export async function addFunds(page: Page, amount: string) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Ajouter', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Ajouter de l’argent', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Ajouter de l’argent fictif' });
   await dialog.getByLabel('Montant').fill(amount);
   await dialog.getByRole('button', { name: 'Confirmer l’ajout' }).click();

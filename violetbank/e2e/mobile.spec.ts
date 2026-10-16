@@ -17,9 +17,16 @@ test('aucune page ne déborde horizontalement sur mobile et aucune erreur JS', a
 
 test('navigation mobile : menu « Plus » et actions rapides', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Plus' }).click();
+  await page.getByRole('navigation', { name: 'Navigation mobile' }).getByRole('button', { name: 'Toutes les rubriques' }).click();
   await page.getByRole('dialog', { name: 'Toutes les rubriques' }).getByRole('link', { name: 'Budgets' }).click();
   await expect(page.getByRole('heading', { name: 'Budgets' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Navigation mobile' }).getByRole('link', { name: 'Crédit' }).click();
+  await expect(page.getByRole('heading', { name: 'Prêts fictifs' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Navigation mobile' }).getByRole('link', { name: 'Accueil' }).click();
+  await page.getByRole('button', { name: 'Rechercher' }).click();
+  await page.getByLabel('Terme recherché').fill('Lina');
+  await expect(page.getByRole('dialog', { name: 'Rechercher' }).getByText('Lina Moreau').first()).toBeVisible();
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Actions rapides' }).click();
   await page.getByRole('dialog', { name: 'Actions rapides' }).getByRole('button', { name: 'Simuler une dépense' }).click();
   await expect(page.getByRole('dialog', { name: 'Simuler une dépense' })).toBeVisible();
