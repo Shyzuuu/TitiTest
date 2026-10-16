@@ -1,0 +1,19 @@
+{
+  "name": "subway-surfers-infinite-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prototype autonome inspiré de Subway Surfers : ressources de test, ralenti, enregistrement et rejeu déterministe.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs 8080",
+    "test": "node --test \"tests/unit/*.test.mjs\" \"tests/integration/*.test.mjs\" \"tests/regression/*.test.mjs\" \"tests/replay/*.test.mjs\"",
+    "test:unit": "node --test \"tests/unit/*.test.mjs\"",
+    "test:integration": "node --test \"tests/integration/*.test.mjs\"",
+    "test:regression": "node --test \"tests/regression/*.test.mjs\" \"tests/replay/*.test.mjs\"",
+    "test:perf": "node tests/perf/long-run.mjs",
+    "test:e2e": "node tests/e2e/smoke.mjs"
+  }
+}
