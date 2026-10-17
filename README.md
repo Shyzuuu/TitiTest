@@ -1,5 +1,15 @@
 # TitiTest
 
+## VBanque — simulation bancaire fictive (par Titi)
+
+Application bancaire de démonstration créée par Titi (React + TypeScript + Vite + Tailwind, APK Android via Capacitor) : comptes, cartes virtuelles « DEMO », virements et contacts fictifs, coffres, budgets, statistiques et module complet de prêts simulés (simulateur, décision locale, échéancier, remboursements, contrepassations). **Argent et crédits entièrement fictifs**, données stockées localement.
+
+Documentation, architecture et tests : [`violetbank/README.md`](violetbank/README.md).
+
+```bash
+cd violetbank && npm install && npm run dev   # http://127.0.0.1:5180
+```
+
 ## Cercle — messagerie multi-personnages
 
 Application web complète (React + Node.js + SQLite + Socket.IO) : conversations indépendantes avec des personnages fictifs qui écrivent d'eux-mêmes, réponses à ses propres messages, brouillons par conversation, boîte mail virtuelle, notifications, mémoire par personnage et IA (Claude ou simulation locale) capable de répondre à votre place après un délai sans jamais doubler une réponse manuelle.
