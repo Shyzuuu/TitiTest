@@ -119,6 +119,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: VioletBank-apk
+      - uses: actions/download-artifact@v4
+        with:
+          name: VioletBank-emulateur
+          path: emulateur
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: violetbank-latest
@@ -133,3 +137,4 @@ jobs:
           files: |
             VioletBank.apk
             VioletBank.apk.sha256
+            emulateur/*.png

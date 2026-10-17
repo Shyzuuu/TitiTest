@@ -19,7 +19,8 @@ export default defineConfig({
   preview: { host: '127.0.0.1', port: 4780 },
   build: {
     outDir: artifact ? 'dist-artifact' : android ? 'dist-android' : 'dist',
-    sourcemap: true,
+    // Pas de cartes de sources dans l'APK ni dans le fichier unique : poids inutile.
+    sourcemap: !(artifact || android),
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: artifact
