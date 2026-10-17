@@ -20,7 +20,7 @@ import { useBank } from '../store/bank';
 import { useUi } from '../store/ui';
 
 const WIDGETS = [
-  { key: 'discover', label: 'Découvrir VIOLETBANK' },
+  { key: 'discover', label: 'Découvrir VBanque' },
   { key: 'accounts', label: 'Comptes fictifs' },
   { key: 'activity', label: 'Activité récente' },
   { key: 'loans', label: 'Prêts actifs' },
@@ -270,7 +270,7 @@ export function Home() {
             <div className="flex gap-4">
               <ProgressRing value={doneCount} total={steps.length} />
               <div className="min-w-0">
-                <h2 className="text-lg font-bold leading-snug">{doneCount === steps.length ? 'Vous maîtrisez la simulation 🎉' : 'Découvrez davantage de fonctionnalités VIOLETBANK'}</h2>
+                <h2 className="text-lg font-bold leading-snug">{doneCount === steps.length ? 'Vous maîtrisez la simulation 🎉' : 'Découvrez davantage de fonctionnalités VBanque'}</h2>
                 <p className="mt-0.5 text-[15px] text-muted">{nextStep ? `Prochaine étape : ${nextStep.label.toLowerCase()}.` : 'Toutes les étapes de découverte sont terminées.'}</p>
               </div>
             </div>

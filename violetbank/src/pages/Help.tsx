@@ -15,7 +15,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
 ];
 
 export default function Help() {
-  const appName = 'VIOLETBANK';
+  const appName = 'VBanque';
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader title="Centre d’aide" icon={CircleHelp} subtitle={`Tout comprendre de ${appName}.`} />
@@ -24,6 +24,9 @@ export default function Help() {
         <h2 className="mt-2 text-xl font-bold">Une application de démonstration</h2>
         <p className="mt-2 text-muted">
           {appName} imite l’ergonomie d’une application bancaire mobile pour tester des parcours : comptes, cartes, virements, coffres, budgets et un module complet de prêts fictifs. Tous les montants, taux, décisions et documents sont fictifs et sans valeur bancaire ou contractuelle.
+        </p>
+        <p className="mt-3 text-sm">
+          Application créée par <strong>Titi</strong>, développée et améliorée avec <strong>Claude</strong>.
         </p>
         <Callout tone="warn" className="mt-4">
           N’y saisissez jamais de données réelles : ni identité, ni coordonnées bancaires, ni numéro de carte. L’application ne les demande pas et n’en a pas besoin.

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* Palette VIOLETBANK (cahier des charges) en canaux RGB pour l'opacité Tailwind. */
+  /* Palette VBanque (cahier des charges) en canaux RGB pour l'opacité Tailwind. */
   --bg: 247 247 251; /* #F7F7FB */
   --surface: 255 255 255;
   --raised: 240 237 251;

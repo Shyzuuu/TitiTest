@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.violetbank.demo',
-  appName: 'VIOLETBANK',
+  appName: 'VBanque',
   webDir: 'dist-android',
   android: {
     // Android 15 impose l'affichage bord à bord : les marges système sont gérées par le WebView.

@@ -1,8 +1,8 @@
 # TitiTest
 
-## VioletBank Demo — simulation bancaire fictive
+## VBanque — simulation bancaire fictive (par Titi)
 
-Application bancaire de démonstration (React + TypeScript + Vite + Tailwind) : comptes, cartes virtuelles « DEMO », virements et contacts fictifs, coffres, budgets, statistiques et module complet de prêts simulés (simulateur, décision locale, échéancier, remboursements, contrepassations). **Argent et crédits entièrement fictifs**, données stockées localement.
+Application bancaire de démonstration créée par Titi (React + TypeScript + Vite + Tailwind, APK Android via Capacitor) : comptes, cartes virtuelles « DEMO », virements et contacts fictifs, coffres, budgets, statistiques et module complet de prêts simulés (simulateur, décision locale, échéancier, remboursements, contrepassations). **Argent et crédits entièrement fictifs**, données stockées localement.
 
 Documentation, architecture et tests : [`violetbank/README.md`](violetbank/README.md).
 

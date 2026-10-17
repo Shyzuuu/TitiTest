@@ -23,14 +23,14 @@ export default function Reset() {
   // Restauration : le fichier passe par la même validation (schéma + intégrité) qu'au démarrage.
   const restore = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 15_000_000) return toast('error', 'Fichier trop volumineux', 'Une sauvegarde VIOLETBANK fait au plus quelques mégaoctets.');
+    if (file.size > 15_000_000) return toast('error', 'Fichier trop volumineux', 'Une sauvegarde VBanque fait au plus quelques mégaoctets.');
     try {
       const result = validateState(JSON.parse(await file.text()));
       if (!result.ok) return toast('error', 'Sauvegarde refusée', result.error);
       replace(result.state, 'Sauvegarde restaurée.');
       navigate('/');
     } catch {
-      toast('error', 'Sauvegarde illisible', 'Le fichier n’est pas un JSON VIOLETBANK valide.');
+      toast('error', 'Sauvegarde illisible', 'Le fichier n’est pas un JSON VBanque valide.');
     } finally {
       if (fileInput.current) fileInput.current.value = '';
     }
@@ -78,7 +78,7 @@ export default function Reset() {
         <Button className="ml-2 mt-4" variant="ghost" icon={Upload} onClick={() => fileInput.current?.click()}>
           Restaurer une sauvegarde
         </Button>
-        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void restore(e.target.files?.[0])} aria-label="Fichier de sauvegarde VIOLETBANK" />
+        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void restore(e.target.files?.[0])} aria-label="Fichier de sauvegarde VBanque" />
       </Card>
       <Card className="p-5">
         <h2 className="flex items-center gap-2 font-bold">

@@ -1,5 +1,5 @@
-# Compile, signe, teste sur émulateur et publie l'APK VIOLETBANK (application de simulation).
-name: VIOLETBANK Android (APK)
+# Compile, signe, teste sur émulateur et publie l'APK VBanque (application de simulation).
+name: VBanque Android (APK)
 
 on:
   push:
@@ -127,11 +127,11 @@ jobs:
         with:
           tag_name: violetbank-latest
           target_commitish: ${{ github.sha }}
-          name: VIOLETBANK — APK Android (simulation)
+          name: VBanque — APK Android (simulation)
           prerelease: true
           make_latest: false
           body: |
-            Application Android VIOLETBANK — simulation bancaire entièrement fictive (aucun argent, aucune carte, aucun prêt réel).
+            Application Android VBanque — simulation bancaire entièrement fictive (aucun argent, aucune carte, aucun prêt réel).
             Commit : ${{ github.sha }}. Téléchargez VioletBank.apk sur votre téléphone, autorisez l'installation depuis cette source, puis installez.
             APK signé avec une clé de démonstration (non destinée au Play Store).
           files: |

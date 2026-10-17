@@ -11,11 +11,11 @@ const bodyOpen = html.lastIndexOf('<body>');
 const headClose = html.lastIndexOf('</head>', bodyOpen);
 const head = html.slice(html.indexOf('<head>') + 6, headClose);
 const body = html.slice(bodyOpen + 6, html.lastIndexOf('</body>'));
-const title = /<title>[\s\S]*?<\/title>/.exec(head)?.[0] ?? '<title>VioletBank Demo</title>';
+const title = /<title>[\s\S]*?<\/title>/.exec(head)?.[0] ?? '<title>VBanque</title>';
 const keep = head
   .replace(/<title>[\s\S]*?<\/title>/, '')
   .replace(/<meta charset[^>]*>/i, '')
   .replace(/<meta name="viewport"[^>]*>/i, '')
   .replace(/<link rel="icon"[^>]*>/i, '');
-writeFileSync('dist-artifact/violetbank-demo.html', `${title.replace(/>[\s\S]*?</, '>VioletBank Demo<')}\n${keep.trim()}\n${body.trim()}\n`);
+writeFileSync('dist-artifact/violetbank-demo.html', `${title.replace(/>[\s\S]*?</, '>VBanque<')}\n${keep.trim()}\n${body.trim()}\n`);
 console.log('dist-artifact/violetbank-demo.html', (readFileSync('dist-artifact/violetbank-demo.html').length / 1024).toFixed(0), 'Ko');

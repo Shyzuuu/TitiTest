@@ -65,15 +65,15 @@ export interface SaveResult {
   message: string;
 }
 
-/** Enregistre un fichier : Documents/VIOLETBANK sur Android, téléchargement dans un navigateur. */
+/** Enregistre un fichier : Documents/VBanque sur Android, téléchargement dans un navigateur. */
 export async function saveFile(filename: string, content: string, mime: string): Promise<SaveResult> {
   if (!isNative) {
     downloadBlob(filename, content, mime);
     return { ok: true, message: `Fichier « ${filename} » téléchargé.` };
   }
   try {
-    await Filesystem.writeFile({ path: `VIOLETBANK/${filename}`, data: content, directory: Directory.Documents, encoding: Encoding.UTF8, recursive: true });
-    return { ok: true, message: `Enregistré dans Documents/VIOLETBANK/${filename}` };
+    await Filesystem.writeFile({ path: `VBanque/${filename}`, data: content, directory: Directory.Documents, encoding: Encoding.UTF8, recursive: true });
+    return { ok: true, message: `Enregistré dans Documents/VBanque/${filename}` };
   } catch (e) {
     return { ok: false, message: `Enregistrement impossible : ${(e as Error).message}` };
   }

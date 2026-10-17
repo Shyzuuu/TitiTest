@@ -222,3 +222,25 @@ test.describe('Paiement simulé et remboursement commerçant', () => {
     expect(await mainBalance(page)).toBe(8_000);
   });
 });
+
+test.describe('Profil et code d’accès', () => {
+  test('activer un code, être verrouillé au rechargement, déverrouiller', async ({ page }) => {
+    await page.goto('/profil');
+    await expect(page.getByText('Application créée par').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Activer' }).click();
+    const dialog = page.getByRole('dialog');
+    for (const d of '1357') await dialog.getByRole('button', { name: d, exact: true }).click();
+    for (const d of '1357') await dialog.getByRole('button', { name: d, exact: true }).click();
+    await expect(page.getByText('Code d’accès activé')).toBeVisible();
+    await page.reload();
+    const lock = page.getByRole('dialog', { name: 'Déverrouiller VBanque' });
+    await expect(lock).toBeVisible();
+    for (const d of '0000') await lock.getByRole('button', { name: d, exact: true }).click();
+    await expect(lock.getByText('Code incorrect')).toBeVisible();
+    await page.waitForTimeout(600);
+    for (const d of '1357') await lock.getByRole('button', { name: d, exact: true }).click();
+    await expect(lock).toBeHidden();
+    await page.getByRole('button', { name: /Orchidée/ }).click();
+    await expect(page.getByText('Formule Orchidée').first()).toBeVisible();
+  });
+});

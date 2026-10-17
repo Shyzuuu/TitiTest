@@ -313,6 +313,9 @@ export const simLogSchema = z.object({
   detail: shortText(400),
 });
 
+/** Verrou de démonstration : empreinte salée du code, jamais le code lui-même. */
+export const appLockSchema = z.object({ salt: z.string().min(8).max(64), hash: z.string().length(64) });
+
 export const settingsSchema = z.object({
   appName: shortText(32).min(1),
   theme: themeSchema,
@@ -328,7 +331,11 @@ export const settingsSchema = z.object({
   allowDeferral: z.boolean(),
   earlyRepaymentFeeBps: z.number().int().min(0).max(1000),
   sidebarCollapsed: z.boolean(),
+  appLock: appLockSchema.nullable().default(null),
 });
+
+/** Formules purement cosmétiques : aucune n'a de prix ni d'avantage financier réel. */
+export const planSchema = z.enum(['essentiel', 'amethyste', 'orchidee', 'nuit']);
 
 export const profileSchema = z.object({
   displayName: shortText(40).min(1),
@@ -336,6 +343,10 @@ export const profileSchema = z.object({
   avatarEmoji: shortText(8),
   avatarColor: hexColor,
   demoHandle: shortText(40),
+  // Champs ajoutés en v2 : valeurs par défaut pour les sauvegardes antérieures.
+  bio: shortText(140).default(''),
+  plan: planSchema.default('essentiel'),
+  joinedAt: localDateTime.nullable().default(null),
 });
 
 export const bankStateSchema = z.object({
@@ -384,5 +395,7 @@ export type NotificationKind = z.infer<typeof notificationKindSchema>;
 export type SimLogEntry = z.infer<typeof simLogSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 export type Profile = z.infer<typeof profileSchema>;
+export type Plan = z.infer<typeof planSchema>;
+export type AppLock = z.infer<typeof appLockSchema>;
 export type BankState = z.infer<typeof bankStateSchema>;
 export type Currency = z.infer<typeof currencySchema>;

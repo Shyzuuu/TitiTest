@@ -19,12 +19,15 @@ interface UiStore {
   modal: ModalState | null;
   moreOpen: boolean;
   searchOpen: boolean;
+  /** Session déverrouillée (code d'accès de démonstration). */
+  unlocked: boolean;
   toast: (tone: ToastTone, title: string, body?: string) => void;
   dismiss: (id: number) => void;
   openModal: (kind: ModalKind, props?: ModalState['props']) => void;
   closeModal: () => void;
   setMoreOpen: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
+  setUnlocked: (unlocked: boolean) => void;
 }
 
 let nextId = 1;
@@ -35,6 +38,7 @@ export const useUi = create<UiStore>((set, get) => ({
   modal: null,
   moreOpen: false,
   searchOpen: false,
+  unlocked: false,
   toast: (tone, title, body) => {
     const id = nextId++;
     // Au plus 4 toasts visibles : les plus anciens cèdent la place.
@@ -51,4 +55,5 @@ export const useUi = create<UiStore>((set, get) => ({
   closeModal: () => set({ modal: null }),
   setMoreOpen: (moreOpen) => set({ moreOpen }),
   setSearchOpen: (searchOpen) => set({ searchOpen, moreOpen: false }),
+  setUnlocked: (unlocked) => set({ unlocked }),
 }));

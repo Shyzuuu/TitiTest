@@ -1,4 +1,6 @@
-# VIOLETBANK — simulation bancaire fictive (web + Android)
+# VBanque — simulation bancaire fictive (web + Android)
+
+Application créée par **Titi**, développée et améliorée avec Claude.
 
 > **SIMULATION BANCAIRE — ARGENT ET CRÉDITS FICTIFS.** Application de démonstration : aucun compte réel, aucun fonds détenu, aucun paiement émis, aucune banque n’examine les demandes de prêt. Sans affiliation avec un établissement bancaire ou une fintech existante. Le nom est personnalisable dans les paramètres.
 
@@ -6,7 +8,7 @@ Application React + TypeScript entièrement locale (stockage navigateur) : compt
 
 ## Application Android (APK)
 
-Projet Android natif Capacitor dans `android/` (paquet `com.violetbank.demo`, nom « VIOLETBANK », icône et écran de démarrage au logo V, thème violet, bouton Retour géré, données stockées localement sur l’appareil, aucune dépendance Internet pour les fonctions principales).
+Projet Android natif Capacitor dans `android/` (paquet `com.violetbank.demo`, nom « VBanque », icône et écran de démarrage au logo V, thème violet, bouton Retour géré, données stockées localement sur l’appareil, aucune dépendance Internet pour les fonctions principales).
 
 **Télécharger l’APK** : le workflow GitHub Actions `.github/workflows/violetbank-android.yml` compile, signe, installe sur un émulateur Android 14 (lancement, bouton Retour, fermeture et réouverture), puis publie `VioletBank.apk` dans la release `violetbank-latest` du dépôt.
 
@@ -22,7 +24,7 @@ Dans Android Studio : `npm run build:android`, puis ouvrir le dossier `violetban
 
 L’APK est signé avec une **clé de démonstration** versionnée (`android/app/violetbank-demo.keystore`) pour permettre l’installation et les mises à jour : elle ne doit jamais servir à une publication réelle.
 
-Exports (CSV, relevé de prêt, sauvegarde JSON) : enregistrés dans `Documents/VIOLETBANK/` sur le téléphone. La sauvegarde se restaure depuis *Profil › Données de démonstration*.
+Exports (CSV, relevé de prêt, sauvegarde JSON) : enregistrés dans `Documents/VBanque/` sur le téléphone. La sauvegarde se restaure depuis *Profil › Données de démonstration*.
 
 ## Démarrage (web)
 

@@ -10,7 +10,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 export function loanStatementHtml(state: BankState, loan: Loan, today: string, generatedAt: string): string {
   const cur = state.settings.currency as CurrencyCode;
   const m = (c: number) => esc(formatMoney(c, { currency: cur }));
-  const app = 'VIOLETBANK';
+  const app = 'VBanque';
   const rows = loan.schedule
     .map((i) => `<tr><td>${i.index}</td><td>${formatDate(i.dueDate)}</td><td class="r">${m(i.amount)}</td><td class="r">${m(i.principal)}</td><td class="r">${m(i.interest)}</td><td class="r">${m(i.balanceAfter)}</td><td>${esc(INSTALLMENT_LABEL[installmentDisplayStatus(i, today, loan)])}</td></tr>`)
     .join('');
@@ -34,10 +34,10 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:6px 8px;b
 footer{margin-top:28px;font-size:11px;color:#6E6E7A}
 @media print{body{padding:0}.wm{position:fixed}}
 </style></head><body>
-<div class="wm"><span>VIOLETBANK — DOCUMENT FICTIF — SANS VALEUR BANCAIRE OU CONTRACTUELLE</span></div>
+<div class="wm"><span>VBANQUE — DOCUMENT FICTIF — SANS VALEUR BANCAIRE OU CONTRACTUELLE</span></div>
 <main>
 <header><div><h1>${app} — Relevé de prêt fictif</h1><div>Identifiant : <b>${esc(loan.reference)}</b> · ${esc(loan.label)}</div></div><div>Généré le ${formatDate(generatedAt, 'long')}<br>Date de simulation : ${formatDate(today, 'long')}</div></header>
-<div class="banner">VIOLETBANK — DOCUMENT FICTIF — SANS VALEUR BANCAIRE OU CONTRACTUELLE. Relevé de test, ce n’est pas un contrat.</div>
+<div class="banner">VBANQUE — DOCUMENT FICTIF — SANS VALEUR BANCAIRE OU CONTRACTUELLE. Relevé de test, ce n’est pas un contrat.</div>
 <div class="grid">
 <div class="kv"><small>Capital simulé</small><b>${m(loan.principal)}</b></div>
 <div class="kv"><small>Durée initiale</small><b>${loan.months} mois</b></div>

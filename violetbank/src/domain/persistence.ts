@@ -19,7 +19,7 @@ export function validateState(raw: unknown): ValidationResult {
   const integrity = checkIntegrity(parsed.data);
   if (integrity) return { ok: false, error: integrity };
   // Le nom de l'application est fixe : les anciennes sauvegardes personnalisées sont normalisées.
-  return { ok: true, state: { ...parsed.data, settings: { ...parsed.data.settings, appName: 'VIOLETBANK' } } };
+  return { ok: true, state: { ...parsed.data, settings: { ...parsed.data.settings, appName: 'VBanque' } } };
 }
 
 export function checkIntegrity(state: BankState): string | null {

@@ -14,7 +14,7 @@ import { SCHEMA_VERSION, type BankState, type Contact, type LoanProduct, type Se
 import { createVault, vaultDeposit } from './vaults';
 
 export const DEFAULT_SETTINGS: Settings = {
-  appName: 'VIOLETBANK',
+  appName: 'VBanque',
   theme: 'system',
   animations: true,
   cardAnimations: true,
@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   allowDeferral: true,
   earlyRepaymentFeeBps: 0,
   sidebarCollapsed: false,
+  appLock: null,
 };
 
 export const DEFAULT_PRODUCTS: LoanProduct[] = [
@@ -62,7 +63,7 @@ function defaultContacts(now: string): Contact[] {
 export function createEmptyState(ctx: Ctx): BankState {
   return {
     schemaVersion: SCHEMA_VERSION,
-    profile: { displayName: 'Alex', holderName: 'ALEX MARTIN', avatarEmoji: '🦄', avatarColor: '#7656F6', demoHandle: '@demo-alex' },
+    profile: { displayName: 'Alex', holderName: 'ALEX MARTIN', avatarEmoji: '🦄', avatarColor: '#7656F6', demoHandle: '@demo-alex', bio: '', plan: 'essentiel', joinedAt: ctx.now },
     settings: { ...DEFAULT_SETTINGS },
     accounts: [{ id: 'acc_main', name: 'Compte principal', kind: 'main', color: '#7656F6', icon: 'wallet', createdAt: ctx.now, archived: false }],
     cards: [],

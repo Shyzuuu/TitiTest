@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">VIOLETBANK</string>
-    <string name="title_activity_main">VIOLETBANK</string>
+    <string name="app_name">VBanque</string>
+    <string name="title_activity_main">VBanque</string>
     <string name="package_name">com.violetbank.demo</string>
     <string name="custom_url_scheme">com.violetbank.demo</string>
 </resources>

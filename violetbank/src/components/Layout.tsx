@@ -13,6 +13,7 @@ import { useResolvedTheme, useToday } from '../lib/hooks';
 import { useBank } from '../store/bank';
 import { useUi } from '../store/ui';
 import { Logo, LogoMark } from './Logo';
+import { LockScreen } from './LockScreen';
 import { GlobalModals } from './OperationModals';
 import { IconButton, Modal } from './ui';
 
@@ -194,7 +195,7 @@ function Header({ onHero }: { onHero: boolean }) {
         Simulation bancaire — argent et crédits fictifs
       </p>
       <div className="mx-auto flex h-[64px] max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
-        <Link to="/" aria-label="Accueil VIOLETBANK" className="shrink-0 lg:hidden">
+        <Link to="/" aria-label="Accueil VBanque" className="shrink-0 lg:hidden">
           <LogoMark size={40} />
         </Link>
         <Link
@@ -452,13 +453,13 @@ function BootNotice() {
 
 /** Écrans principaux affichés sur le dégradé plein écran. */
 // Hauteur du dégradé par écran : il doit couvrir tout le contenu blanc posé dessus.
-const HERO_ROUTES = new Map<string, number>([['/', 780], ['/prets', 820], ['/cartes', 1500], ['/paiements', 640], ['/profil', 560]]);
+const HERO_ROUTES = new Map<string, number>([['/', 780], ['/prets', 820], ['/cartes', 1500], ['/paiements', 640], ['/profil', 720]]);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const theme = useResolvedTheme();
   const animations = useBank((s) => s.state.settings.animations);
-  const appName = 'VIOLETBANK';
+  const appName = 'VBanque';
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#101014' : '#7656F6');
@@ -496,7 +497,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </main>
         <footer className="no-print hidden border-t border-line px-8 py-4 text-center text-xs text-muted lg:block">
-          <strong className="font-bold text-ink/70">SIMULATION BANCAIRE — ARGENT ET CRÉDITS FICTIFS.</strong> {appName} n’est affiliée à aucune banque, ne détient aucun fonds et n’effectue aucun paiement réel.{' '}
+          <strong className="font-bold text-ink/70">SIMULATION BANCAIRE — ARGENT ET CRÉDITS FICTIFS.</strong> {appName}, application créée par Titi, n’est affiliée à aucune banque, ne détient aucun fonds et n’effectue aucun paiement réel.{' '}
           <Link to="/aide" className="font-semibold text-brand-ink hover:underline">
             <BookOpen size={12} className="inline" aria-hidden /> En savoir plus
           </Link>
@@ -506,6 +507,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <MoreSheet />
       <GlobalModals />
       <SearchModal />
+      <LockScreen />
       <Toaster />
     </div>
   );
