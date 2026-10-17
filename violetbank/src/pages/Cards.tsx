@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, CreditCard, Lock, Pencil, Plus, Receipt, Ref
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AccountSelect } from '../components/AccountSelect';
+import { RoundActions, Widget } from '../components/Hero';
 import { AmountInput } from '../components/AmountInput';
 import { TransactionList } from '../components/Transactions';
 import { VirtualCardView } from '../components/VirtualCardView';
@@ -172,78 +173,81 @@ export default function Cards() {
   const spent = card ? cardMonthSpent(state, card.id, monthKey(today)) : 0;
   const account = card ? state.accounts.find((a) => a.id === card.accountId) : undefined;
 
+  const toggleLock = () => {
+    if (!card) return;
+    const res = act((s, ctx) => setCardLock(s, ctx, card.id, !card.locked));
+    if (res.ok) {
+      setLockAnim(true);
+      setTimeout(() => setLockAnim(false), 450);
+    }
+  };
+
   return (
-    <div>
-      <PageHeader title="Cartes virtuelles" icon={CreditCard} subtitle="Cartes de démonstration sans valeur, utilisables uniquement dans la simulation." actions={<Button icon={Plus} onClick={() => setEditing('new')}>Nouvelle carte</Button>} />
+    <div className="mx-auto max-w-2xl">
+      <section className="pb-6 pt-2 text-white">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-[28px] font-extrabold tracking-tight">Cartes</h1>
+            <p className="text-sm text-white/80">Cartes de démonstration sans valeur, utilisables uniquement dans la simulation.</p>
+          </div>
+          <button type="button" onClick={() => setEditing('new')} aria-label="Nouvelle carte" title="Nouvelle carte" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/25 backdrop-blur transition hover:bg-white/35 active:scale-95">
+            <Plus size={24} aria-hidden />
+          </button>
+        </div>
+        {card && (
+          <>
+            <div ref={scroller} onScroll={onScroll} className="-mx-1 mt-4 flex snap-x snap-mandatory overflow-x-auto scrollbar-none" aria-label="Carrousel de cartes">
+              {cards.map((c) => (
+                <div key={c.id} className="flex w-full shrink-0 snap-center justify-center px-1 py-3">
+                  <VirtualCardView card={c} className={lockAnim && c.id === card.id ? 'animate-shake' : undefined} />
+                </div>
+              ))}
+            </div>
+            {cards.length > 1 && (
+              <div className="mt-1 flex items-center justify-center gap-3">
+                <IconButton icon={ChevronLeft} label="Carte précédente" onClick={() => goTo(index - 1)} disabled={index === 0} className="text-white hover:bg-white/15" />
+                <div className="flex gap-1.5">
+                  {cards.map((c, i) => (
+                    <button key={c.id} type="button" onClick={() => goTo(i)} aria-label={`Carte ${i + 1}`} className={clsx('h-2 rounded-full transition-all', i === index ? 'w-6 bg-white' : 'w-2 bg-white/40')} />
+                  ))}
+                </div>
+                <IconButton icon={ChevronRight} label="Carte suivante" onClick={() => goTo(index + 1)} disabled={index >= cards.length - 1} className="text-white hover:bg-white/15" />
+              </div>
+            )}
+            <div className="mt-3 text-center">
+              <h2 className="text-xl font-bold">{card.name}</h2>
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5 text-sm text-white/85">
+                <span>{account?.name ?? '—'}</span>
+                <span aria-hidden>·</span>
+                <span className="font-mono">··{card.demoId.slice(-4)}</span>
+                {card.kind === 'disposable' && <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">Jetable</span>}
+                <span className={clsx('rounded-full px-2 py-0.5 text-xs font-semibold', card.locked ? 'bg-[#E44F62]/80' : 'bg-white/20')}>{card.locked ? 'Verrouillée' : 'Active'}</span>
+              </div>
+              <p className="mt-1 text-xs text-white/70">Touchez la carte pour la retourner · balayez pour changer</p>
+            </div>
+            <div className="mt-6">
+              <RoundActions
+                actions={[
+                  { label: card.locked ? 'Déverrouiller' : 'Verrouiller', icon: card.locked ? Unlock : Lock, onClick: toggleLock, tone: card.locked ? 'active' : 'default' },
+                  { label: 'Modifier', icon: Pencil, onClick: () => setEditing(card) },
+                  { label: 'Dépense', icon: Receipt, onClick: () => open('expense', { cardId: card.id }) },
+                  { label: 'Supprimer', icon: Trash2, onClick: () => setDeleting(card), tone: 'danger' },
+                ]}
+              />
+            </div>
+          </>
+        )}
+      </section>
       {!card ? (
-        <Card>
+        <Widget>
           <EmptyState icon={CreditCard} title="Aucune carte de démonstration" action={<Button icon={Plus} onClick={() => setEditing('new')}>Créer ma première carte</Button>}>
             Créez une carte fictive personnalisée pour simuler des dépenses.
           </EmptyState>
-        </Card>
+        </Widget>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-5">
-          <div className="min-w-0 lg:col-span-2">
-            <div className="relative">
-              <div ref={scroller} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto scrollbar-none" aria-label="Carrousel de cartes">
-                {cards.map((c) => (
-                  <div key={c.id} className="flex w-full shrink-0 snap-center justify-center px-1 py-3">
-                    <VirtualCardView card={c} className={lockAnim && c.id === card.id ? 'animate-shake' : undefined} />
-                  </div>
-                ))}
-              </div>
-              {cards.length > 1 && (
-                <div className="mt-2 flex items-center justify-center gap-3">
-                  <IconButton icon={ChevronLeft} label="Carte précédente" onClick={() => goTo(index - 1)} disabled={index === 0} />
-                  <div className="flex gap-1.5">
-                    {cards.map((c, i) => (
-                      <button key={c.id} type="button" onClick={() => goTo(i)} aria-label={`Carte ${i + 1}`} className={clsx('h-2 rounded-full transition-all', i === index ? 'w-6 bg-brand' : 'w-2 bg-line')} />
-                    ))}
-                  </div>
-                  <IconButton icon={ChevronRight} label="Carte suivante" onClick={() => goTo(index + 1)} disabled={index >= cards.length - 1} />
-                </div>
-              )}
-              <p className="mt-2 text-center text-xs text-muted">Touchez la carte pour la retourner · balayez pour changer</p>
-            </div>
-            <div className="mt-5 grid grid-cols-4 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const res = act((s, ctx) => setCardLock(s, ctx, card.id, !card.locked));
-                  if (res.ok) {
-                    setLockAnim(true);
-                    setTimeout(() => setLockAnim(false), 450);
-                  }
-                }}
-                className="card flex flex-col items-center gap-1.5 p-3 text-xs font-semibold"
-              >
-                {card.locked ? <Unlock size={20} className="text-ok" aria-hidden /> : <Lock size={20} className="text-brand-ink" aria-hidden />}
-                {card.locked ? 'Déverrouiller' : 'Verrouiller'}
-              </button>
-              <button type="button" onClick={() => setEditing(card)} className="card flex flex-col items-center gap-1.5 p-3 text-xs font-semibold">
-                <Pencil size={20} className="text-brand-ink" aria-hidden />
-                Modifier
-              </button>
-              <button type="button" onClick={() => open('expense', { cardId: card.id })} className="card flex flex-col items-center gap-1.5 p-3 text-xs font-semibold">
-                <Receipt size={20} className="text-brand-ink" aria-hidden />
-                Dépense
-              </button>
-              <button type="button" onClick={() => setDeleting(card)} className="card flex flex-col items-center gap-1.5 p-3 text-xs font-semibold">
-                <Trash2 size={20} className="text-danger" aria-hidden />
-                Supprimer
-              </button>
-            </div>
-          </div>
-          <div className="min-w-0 space-y-6 lg:col-span-3">
-            <Card className="p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="truncate text-xl font-bold">{card.name}</h2>
-                <span className="flex flex-wrap justify-end gap-1.5">
-                  {card.kind === 'disposable' && <Badge tone="brand">Jetable</Badge>}
-                  {card.locked ? <Badge tone="danger"><Lock size={12} /> Verrouillée</Badge> : <Badge tone="ok">Active</Badge>}
-                </span>
-              </div>
-              <dl className="mt-3 divide-y divide-line">
+        <div className="space-y-4">
+            <Widget title="Détails de la carte" action={card.kind === 'disposable' ? <Badge tone="brand">Jetable</Badge> : undefined}>
+              <dl className="divide-y divide-line">
                 <KeyValue label="Compte associé" value={account?.name ?? '—'} />
                 <KeyValue label="Identifiant de démonstration" value={<span className="font-mono">{card.demoId}</span>} />
                 <KeyValue label="Expiration fictive" value={demoExpiry(card)} />
@@ -251,16 +255,14 @@ export default function Cards() {
                 <KeyValue label="Dépenses simulées ce mois" value={money(spent)} />
                 <KeyValue label="Plafond mensuel de test" value={card.monthlyLimit ? money(card.monthlyLimit) : 'Aucun'} />
               </dl>
-              <Button className="mt-3" size="sm" variant="secondary" icon={RefreshCw} onClick={() => act((s, ctx) => regenerateCardId(s, ctx, card.id))}>
+              {card.monthlyLimit && <Progress className="mt-3" value={(spent / card.monthlyLimit) * 100} color={spent > card.monthlyLimit * 0.9 ? 'rgb(var(--danger))' : undefined} label="Consommation du plafond" />}
+              <Button className="mt-4 rounded-full" size="sm" variant="secondary" icon={RefreshCw} onClick={() => act((s, ctx) => regenerateCardId(s, ctx, card.id))}>
                 Régénérer l’identifiant
               </Button>
-              {card.monthlyLimit && <Progress className="mt-3" value={(spent / card.monthlyLimit) * 100} color={spent > card.monthlyLimit * 0.9 ? 'rgb(var(--danger))' : undefined} label="Consommation du plafond" />}
-            </Card>
-            <Card className="p-4 sm:p-5">
-              <h2 className="mb-3 text-lg font-bold">Transactions de la carte</h2>
+            </Widget>
+            <Widget title="Transactions de la carte">
               <TransactionList txs={txs} empty={<EmptyState icon={Receipt} title="Aucune dépense avec cette carte" action={<Button variant="soft" onClick={() => open('expense', { cardId: card.id })}>Simuler une dépense</Button>} />} />
-            </Card>
-          </div>
+            </Widget>
         </div>
       )}
       {editing && <CardForm card={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}

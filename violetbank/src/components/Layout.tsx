@@ -446,6 +446,10 @@ function BootNotice() {
   );
 }
 
+/** Écrans principaux affichés sur le dégradé plein écran. */
+// Hauteur du dégradé par écran : il doit couvrir tout le contenu blanc posé dessus.
+const HERO_ROUTES = new Map<string, number>([['/', 760], ['/prets', 820], ['/cartes', 1500]]);
+
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const theme = useResolvedTheme();
@@ -465,7 +469,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.scrollTo({ top: 0 });
   }, [location.pathname]);
 
-  const onHero = location.pathname === '/';
+  const onHero = HERO_ROUTES.has(location.pathname);
   return (
     <div className="flex min-h-dvh">
       <a href="#contenu" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-brand focus:px-4 focus:py-2 focus:text-white">
@@ -476,7 +480,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         {onHero && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[760px] bg-[linear-gradient(180deg,#A13CF2_0%,#8A4DF7_22%,#6A4BEF_45%,#3B2590_70%,rgb(var(--bg))_100%)]"
+            className="pointer-events-none absolute inset-x-0 top-0 bg-[linear-gradient(180deg,#A13CF2_0%,#8A4DF7_16%,#6A4BEF_36%,#3B2590_62%,#2A1B6A_86%,rgb(var(--bg))_100%)]"
+            style={{ height: HERO_ROUTES.get(location.pathname) }}
           />
         )}
         <Header onHero={onHero} />

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Hero, HeroAmount, HeroPill, RoundActions, Widget } from '../components/Hero';
 import { Icon } from '../components/Icon';
 import { Button, EmptyState, Modal, Switch } from '../components/ui';
 import { createCard } from '../domain/cards';
@@ -46,35 +47,6 @@ function useHiddenWidgets() {
       return next;
     });
   return { hidden, toggle };
-}
-
-/** Solde en grand avec les centimes réduits, à partir du texte déjà formaté. */
-function BigAmount({ text }: { text: string }) {
-  const m = /^(.*?)([,.]\d{2})(\s*\S+)$/.exec(text);
-  if (!m) return <>{text}</>;
-  return (
-    <>
-      {m[1]}
-      <span className="text-[0.55em] align-[0.62em]">{m[2]}</span>
-      <span className="ml-1 text-[0.55em] align-[0.62em]">{m[3]?.trim()}</span>
-    </>
-  );
-}
-
-function Widget({ title, to, children, className }: { title?: string; to?: string; children: React.ReactNode; className?: string }) {
-  return (
-    <section className={clsx('rounded-[28px] border border-line/60 bg-surface p-5 shadow-soft', className)}>
-      {title &&
-        (to ? (
-          <Link to={to} className="mb-3 inline-flex items-center gap-1 text-[15px] font-semibold text-muted hover:text-ink">
-            {title} <ChevronRight size={17} aria-hidden />
-          </Link>
-        ) : (
-          <h2 className="mb-3 text-[15px] font-semibold text-muted">{title}</h2>
-        ))}
-      {children}
-    </section>
-  );
 }
 
 function ActivityRow({ tx }: { tx: Transaction }) {
@@ -257,7 +229,6 @@ export function Home() {
   };
   const disposable = cards.find((c) => c.kind === 'disposable');
   const net = summary.available + summary.inVaults - summary.loanOutstanding;
-  const balanceText = money(summary.available, { sensitive: true });
 
   const heroActions = [
     { label: 'Ajouter de l’argent', icon: Plus, onClick: () => open('deposit') },
@@ -269,34 +240,22 @@ export function Home() {
   return (
     <div className="mx-auto max-w-2xl">
       {/* Solde principal sur le dégradé plein écran */}
-      <section className="flex min-h-[440px] flex-col items-center pt-6 text-center text-white sm:min-h-[480px]" aria-labelledby="balance-title">
-        <p id="balance-title" className="text-[17px] font-semibold text-white/90">
-          Personnel · {state.settings.currency}
-        </p>
-        <button type="button" onClick={() => update((s) => ({ ...s, settings: { ...s.settings, balanceHidden: !s.settings.balanceHidden } }))} className="group mt-1 rounded-2xl px-3" aria-label={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'} title={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'}>
-          <span className="num block text-[64px] font-extrabold leading-tight tracking-tight sm:text-[76px]" data-testid="main-balance">
-            {hiddenBalance ? balanceText : <BigAmount text={balanceText} />}
-          </span>
+      <Hero title="Accueil" eyebrow={<>Personnel · {state.settings.currency}</>} className="min-h-[440px] sm:min-h-[480px]">
+        <button type="button" onClick={() => update((s) => ({ ...s, settings: { ...s.settings, balanceHidden: !s.settings.balanceHidden } }))} className="mt-1 rounded-2xl px-3" aria-label={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'} title={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'}>
+          <HeroAmount cents={summary.available} testId="main-balance" className="text-[64px] sm:text-[76px]" />
         </button>
         <p className="mt-1 flex items-center gap-2 text-[15px] font-medium text-white/85">
           {hiddenBalance ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
           Identifiant démo {state.profile.demoHandle}
         </p>
         {summary.loanOutstanding > 0 && <p className="mt-1 text-xs text-white/70">Dette fictive {money(summary.loanOutstanding, { sensitive: true })} non incluse</p>}
-        <Link to="/comptes" className="mt-auto rounded-full bg-white/25 px-6 py-3 text-[16px] font-semibold text-white backdrop-blur transition hover:bg-white/35">
-          Comptes et coffres
-        </Link>
-        <div className="mt-6 grid w-full grid-cols-4 gap-2 pb-6">
-          {heroActions.map((a) => (
-            <button key={a.label} type="button" onClick={a.onClick} aria-label={a.aria} className="flex flex-col items-center gap-2 text-[14px] font-semibold leading-tight text-white">
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/25 backdrop-blur transition active:scale-95 hover:bg-white/35">
-                <a.icon size={24} aria-hidden />
-              </span>
-              <span className="max-w-[92px]">{a.label}</span>
-            </button>
-          ))}
+        <div className="mt-auto">
+          <HeroPill to="/comptes">Comptes et coffres</HeroPill>
         </div>
-      </section>
+        <div className="mt-6 w-full pb-6">
+          <RoundActions actions={heroActions} />
+        </div>
+      </Hero>
 
       <div className="space-y-4">
         {show('discover') && (

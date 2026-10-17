@@ -10,7 +10,8 @@ export function toCents(text: string): number {
 export async function mainBalance(page: Page): Promise<number> {
   const el = page.getByTestId('main-balance');
   await expect(el).toBeVisible();
-  return toCents((await el.textContent()) ?? '');
+  // Le montant affiché s'anime : la valeur exacte est portée par data-cents.
+  return Number(await el.getAttribute('data-cents'));
 }
 
 /** Démarre sur un état vide et déterministe via la page de réinitialisation. */

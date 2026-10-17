@@ -1,7 +1,8 @@
 import { CalendarDays, Calculator, FolderOpen, HandCoins, Landmark, Plus, Scale, Wallet } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LoansIllustration, ProductIcon, SimulationDisclaimer, UnifiedStatusBadge } from '../../components/LoanParts';
+import { Hero, HeroAmount, HeroPill, RoundActions } from '../../components/Hero';
+import { ProductIcon, SimulationDisclaimer, UnifiedStatusBadge } from '../../components/LoanParts';
 import { Button, Card, EmptyState, SectionTitle, SeeAll, StatTile } from '../../components/ui';
 import { formatDate } from '../../domain/dates';
 import { quoteLoan } from '../../domain/loanMath';
@@ -27,32 +28,31 @@ export default function LoansHome() {
   const products = state.loanProducts.filter((x) => x.enabled);
 
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#8B70FF] via-brand to-brand-deep p-6 text-white shadow-glow sm:p-8">
-        <div className="pointer-events-none absolute -right-10 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-        <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-xl">
-            <span className="chip bg-white/15 text-white">Module de crédit simulé</span>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Prêts fictifs</h1>
-            <p className="mt-2 text-white/80">Simulez un prêt, obtenez une décision de démonstration, recevez un capital fictif et gérez vos remboursements — sans aucune banque réelle.</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button variant="secondary" className="border-0 bg-white text-brand-deep hover:bg-white/90" icon={Calculator} onClick={() => navigate('/prets/simulateur')}>
-                Simuler un prêt
-              </Button>
-              <Button className="bg-white/15 shadow-none hover:bg-white/25" icon={Plus} onClick={() => navigate('/prets/nouvelle')}>
-                Nouvelle demande
-              </Button>
-              <Button className="bg-white/15 shadow-none hover:bg-white/25" icon={Landmark} onClick={() => navigate('/prets/mes-prets')}>
-                Mes prêts
-              </Button>
-              <Button className="bg-white/15 shadow-none hover:bg-white/25" icon={CalendarDays} onClick={() => navigate('/prets/calendrier')}>
-                Calendrier
-              </Button>
-            </div>
-          </div>
-          <LoansIllustration />
+    <div className="mx-auto max-w-4xl space-y-6">
+      <Hero title="Prêts fictifs" eyebrow="Crédit · prêts fictifs" className="min-h-[400px]">
+        <HeroAmount cents={p.outstanding} sensitive={false} testId="loans-outstanding" className="mt-1 text-[56px] sm:text-[68px]" />
+        <p className="mt-1 text-[15px] font-medium text-white/85">
+          Capital fictif restant dû · {p.activeCount} prêt{p.activeCount > 1 ? 's' : ''} actif{p.activeCount > 1 ? 's' : ''}
+        </p>
+        {p.nextDue && (
+          <p className="mt-1 text-sm text-white/75">
+            Prochaine échéance {money(p.nextDue.installment.amount - p.nextDue.installment.paidPrincipal - p.nextDue.installment.paidInterest)} le {formatDate(p.nextDue.installment.dueDate)}
+          </p>
+        )}
+        <div className="mt-auto pt-6">
+          <HeroPill to="/prets/mes-prets">Mes prêts et demandes</HeroPill>
         </div>
-      </section>
+        <div className="mt-6 w-full max-w-2xl pb-6">
+          <RoundActions
+            actions={[
+              { label: 'Simuler', icon: Calculator, to: '/prets/simulateur' },
+              { label: 'Demander', icon: Plus, to: '/prets/nouvelle' },
+              { label: 'Rembourser', icon: Wallet, to: '/prets/remboursement' },
+              { label: 'Calendrier', icon: CalendarDays, to: '/prets/calendrier' },
+            ]}
+          />
+        </div>
+      </Hero>
 
       <SimulationDisclaimer />
 

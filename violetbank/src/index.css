@@ -67,7 +67,7 @@
 
 @layer components {
   .card {
-    @apply rounded-3xl border border-line bg-surface shadow-soft;
+    @apply rounded-[28px] border border-line/60 bg-surface shadow-soft;
   }
   .input {
     @apply w-full rounded-2xl border border-line bg-surface px-4 py-3 text-[15px] text-ink placeholder:text-muted/70 transition focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15 disabled:opacity-60;
