@@ -1,7 +1,6 @@
 import { CircleHelp, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Callout, Card, PageHeader } from '../components/ui';
-import { useBank } from '../store/bank';
 
 const FAQ: { q: string; a: React.ReactNode }[] = [
   { q: 'Est-ce une vraie banque ?', a: 'Non. Il s’agit d’une application de démonstration. Aucun compte réel n’est ouvert, aucun fonds n’est détenu, aucun paiement n’est émis. Elle n’est affiliée à aucun établissement bancaire ou fintech.' },
@@ -16,7 +15,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
 ];
 
 export default function Help() {
-  const appName = useBank((s) => s.state.settings.appName);
+  const appName = 'VIOLETBANK';
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader title="Centre d’aide" icon={CircleHelp} subtitle={`Tout comprendre de ${appName}.`} />

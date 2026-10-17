@@ -8,7 +8,7 @@ export interface Toast {
   body?: string;
 }
 
-export type ModalKind = 'deposit' | 'withdraw' | 'expense' | 'transfer' | 'transaction' | 'quick';
+export type ModalKind = 'deposit' | 'withdraw' | 'expense' | 'transfer' | 'transaction' | 'quick' | 'refund';
 export interface ModalState {
   kind: ModalKind;
   props?: Record<string, string | undefined>;

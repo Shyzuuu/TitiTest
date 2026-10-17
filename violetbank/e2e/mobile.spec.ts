@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const PAGES = ['/', '/comptes', '/cartes', '/historique', '/envoyer', '/recevoir', '/virements', '/contacts', '/prets', '/prets/mes-prets', '/prets/demandes', '/prets/nouvelle', '/prets/calendrier', '/prets/simulateur', '/prets/comparateur', '/prets/remboursement', '/coffres', '/budgets', '/statistiques', '/notifications', '/profil', '/parametres', '/aide', '/journal', '/reinitialisation'];
+const PAGES = ['/', '/paiements', '/paiements/achat', '/comptes', '/cartes', '/historique', '/envoyer', '/recevoir', '/virements', '/contacts', '/prets', '/prets/mes-prets', '/prets/demandes', '/prets/nouvelle', '/prets/calendrier', '/prets/simulateur', '/prets/comparateur', '/prets/remboursement', '/coffres', '/budgets', '/statistiques', '/notifications', '/profil', '/parametres', '/aide', '/journal', '/reinitialisation'];
 
 test('aucune page ne déborde horizontalement sur mobile et aucune erreur JS', async ({ page }) => {
   const errors: string[] = [];
@@ -15,19 +15,22 @@ test('aucune page ne déborde horizontalement sur mobile et aucune erreur JS', a
   expect(errors).toEqual([]);
 });
 
-test('navigation mobile : menu « Plus » et actions rapides', async ({ page }) => {
+test('navigation mobile : onglets, profil, recherche et actions rapides', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('navigation', { name: 'Navigation mobile' }).getByRole('button', { name: 'Toutes les rubriques' }).click();
+  const nav = page.getByRole('navigation', { name: 'Navigation mobile' });
+  for (const [tab, heading] of [['Comptes', 'Comptes'], ['Cartes', 'Cartes'], ['Paiements', 'Paiements'], ['Profil', 'Profil']] as const) {
+    await nav.getByRole('link', { name: tab }).click();
+    await expect(page.getByRole('heading', { name: heading, exact: true }).first()).toBeAttached();
+  }
+  await page.getByRole('button', { name: 'Toutes les rubriques' }).click();
   await page.getByRole('dialog', { name: 'Toutes les rubriques' }).getByRole('link', { name: 'Budgets' }).click();
   await expect(page.getByRole('heading', { name: 'Budgets' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Navigation mobile' }).getByRole('link', { name: 'Crédit' }).click();
-  await expect(page.getByRole('heading', { name: 'Prêts fictifs' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Navigation mobile' }).getByRole('link', { name: 'Accueil' }).click();
+  await nav.getByRole('link', { name: 'Accueil' }).click();
   await page.getByRole('button', { name: 'Rechercher' }).click();
   await page.getByLabel('Terme recherché').fill('Lina');
   await expect(page.getByRole('dialog', { name: 'Rechercher' }).getByText('Lina Moreau').first()).toBeVisible();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Actions rapides' }).click();
-  await page.getByRole('dialog', { name: 'Actions rapides' }).getByRole('button', { name: 'Simuler une dépense' }).click();
-  await expect(page.getByRole('dialog', { name: 'Simuler une dépense' })).toBeVisible();
+  await page.getByRole('dialog', { name: 'Actions rapides' }).getByRole('button', { name: 'Payer (achat simulé)' }).click();
+  await expect(page.getByRole('heading', { name: 'Payer (achat simulé)' })).toBeVisible();
 });

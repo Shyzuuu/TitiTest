@@ -1,10 +1,12 @@
-import { Database, Download, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Database, Download, RotateCcw, Sparkles, Trash2, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { validateState } from '../domain/persistence';
+import { useUi } from '../store/ui';
 import { useNavigate } from 'react-router-dom';
 import { Button, Callout, Card, ConfirmDialog, PageHeader, TextInput } from '../components/ui';
 import { makeCtx, withLog } from '../domain/core';
 import { createDemoState, createEmptyState } from '../domain/seed';
-import { downloadBlob } from '../lib/download';
+import { exportFile } from '../lib/native';
 import { useBankState, useToday } from '../lib/hooks';
 import { useBank } from '../store/bank';
 
@@ -15,6 +17,24 @@ export default function Reset() {
   const navigate = useNavigate();
   const [confirm, setConfirm] = useState<'empty' | 'demo' | null>(null);
   const [typed, setTyped] = useState('');
+  const fileInput = useRef<HTMLInputElement>(null);
+  const toast = useUi((s) => s.toast);
+
+  // Restauration : le fichier passe par la même validation (schéma + intégrité) qu'au démarrage.
+  const restore = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 15_000_000) return toast('error', 'Fichier trop volumineux', 'Une sauvegarde VIOLETBANK fait au plus quelques mégaoctets.');
+    try {
+      const result = validateState(JSON.parse(await file.text()));
+      if (!result.ok) return toast('error', 'Sauvegarde refusée', result.error);
+      replace(result.state, 'Sauvegarde restaurée.');
+      navigate('/');
+    } catch {
+      toast('error', 'Sauvegarde illisible', 'Le fichier n’est pas un JSON VIOLETBANK valide.');
+    } finally {
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
 
   const apply = (kind: 'empty' | 'demo') => {
     // Les préférences d'affichage survivent à la réinitialisation des données.
@@ -52,9 +72,13 @@ export default function Reset() {
             </div>
           ))}
         </dl>
-        <Button className="mt-4" variant="secondary" icon={Download} onClick={() => downloadBlob(`violetbank-demo-sauvegarde-${today}.json`, JSON.stringify(state, null, 2), 'application/json')}>
+        <Button className="mt-4" variant="secondary" icon={Download} onClick={() => void exportFile(`violetbank-sauvegarde-${today}.json`, JSON.stringify(state, null, 2), 'application/json')}>
           Exporter une sauvegarde JSON
         </Button>
+        <Button className="ml-2 mt-4" variant="ghost" icon={Upload} onClick={() => fileInput.current?.click()}>
+          Restaurer une sauvegarde
+        </Button>
+        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" onChange={(e) => void restore(e.target.files?.[0])} aria-label="Fichier de sauvegarde VIOLETBANK" />
       </Card>
       <Card className="p-5">
         <h2 className="flex items-center gap-2 font-bold">

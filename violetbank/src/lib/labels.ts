@@ -16,6 +16,7 @@ export const TX_TYPE_LABEL: Record<TxType, string> = {
   loan_prepayment: 'Remboursement anticipé',
   loan_fee: 'Frais de simulation',
   reversal: 'Contrepassation',
+  merchant_refund: 'Remboursement commerçant',
 };
 
 export type Tone = 'brand' | 'ok' | 'danger' | 'warn' | 'info' | 'neutral';

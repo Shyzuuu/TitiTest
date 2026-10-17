@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import {
-  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChartPie, ChevronRight, Coins, CreditCard, Eye, EyeOff, HandCoins, Info, LayoutGrid, MoreHorizontal, PiggyBank, Plus,
+  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ChartPie, ChevronRight, Coins, CreditCard, Eye, EyeOff, HandCoins, LayoutGrid, MoreHorizontal, PiggyBank, Plus, Send,
   Settings2, Target, Users, type LucideIcon,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -20,8 +20,10 @@ import { useBank } from '../store/bank';
 import { useUi } from '../store/ui';
 
 const WIDGETS = [
-  { key: 'discover', label: 'Découvrir VioletBank' },
+  { key: 'discover', label: 'Découvrir VIOLETBANK' },
+  { key: 'accounts', label: 'Comptes fictifs' },
   { key: 'activity', label: 'Activité récente' },
+  { key: 'loans', label: 'Prêts actifs' },
   { key: 'vaults', label: 'Coffres' },
   { key: 'learn', label: 'En savoir plus' },
   { key: 'products', label: 'Produits fictifs' },
@@ -231,16 +233,18 @@ export function Home() {
   const net = summary.available + summary.inVaults - summary.loanOutstanding;
 
   const heroActions = [
-    { label: 'Ajouter de l’argent', icon: Plus, onClick: () => open('deposit') },
-    { label: 'Entre mes comptes', icon: ArrowLeftRight, onClick: () => open('transfer') },
-    { label: 'Infos comptes', aria: 'Informations sur les comptes', icon: Info, onClick: () => navigate('/comptes') },
-    { label: 'Plus', aria: 'Actions rapides', icon: MoreHorizontal, onClick: () => open('quick') },
+    { label: 'Ajouter', aria: 'Ajouter de l’argent', icon: Plus, onClick: () => open('deposit') },
+    { label: 'Envoyer', icon: Send, onClick: () => navigate('/envoyer') },
+    { label: 'Recevoir', icon: ArrowDownLeft, onClick: () => navigate('/recevoir') },
+    { label: 'Cartes', icon: CreditCard, onClick: () => navigate('/cartes') },
+    { label: 'Prêts', icon: HandCoins, onClick: () => navigate('/prets') },
   ];
+  const activeLoans = state.loans.filter((l) => l.status === 'active' || l.status === 'partially_repaid');
 
   return (
     <div className="mx-auto max-w-2xl">
       {/* Solde principal sur le dégradé plein écran */}
-      <Hero title="Accueil" eyebrow={<>Personnel · {state.settings.currency}</>} className="min-h-[440px] sm:min-h-[480px]">
+      <Hero title="Accueil" eyebrow={<>Bonjour, {state.profile.displayName} · Personnel · {state.settings.currency}</>} className="min-h-[440px] sm:min-h-[480px]">
         <button type="button" onClick={() => update((s) => ({ ...s, settings: { ...s.settings, balanceHidden: !s.settings.balanceHidden } }))} className="mt-1 rounded-2xl px-3" aria-label={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'} title={hiddenBalance ? 'Afficher le solde' : 'Masquer le solde'}>
           <HeroAmount cents={summary.available} testId="main-balance" className="text-[64px] sm:text-[76px]" />
         </button>
@@ -249,8 +253,11 @@ export function Home() {
           Identifiant démo {state.profile.demoHandle}
         </p>
         {summary.loanOutstanding > 0 && <p className="mt-1 text-xs text-white/70">Dette fictive {money(summary.loanOutstanding, { sensitive: true })} non incluse</p>}
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-wrap justify-center gap-2">
           <HeroPill to="/comptes">Comptes et coffres</HeroPill>
+          <button type="button" onClick={() => open('quick')} className="rounded-full bg-white/25 px-5 py-3 text-[16px] font-semibold text-white backdrop-blur transition hover:bg-white/35" aria-label="Actions rapides">
+            <MoreHorizontal size={20} aria-hidden />
+          </button>
         </div>
         <div className="mt-6 w-full pb-6">
           <RoundActions actions={heroActions} />
@@ -263,7 +270,7 @@ export function Home() {
             <div className="flex gap-4">
               <ProgressRing value={doneCount} total={steps.length} />
               <div className="min-w-0">
-                <h2 className="text-lg font-bold leading-snug">{doneCount === steps.length ? 'Vous maîtrisez la simulation 🎉' : `Découvrez davantage de fonctionnalités ${state.settings.appName}`}</h2>
+                <h2 className="text-lg font-bold leading-snug">{doneCount === steps.length ? 'Vous maîtrisez la simulation 🎉' : 'Découvrez davantage de fonctionnalités VIOLETBANK'}</h2>
                 <p className="mt-0.5 text-[15px] text-muted">{nextStep ? `Prochaine étape : ${nextStep.label.toLowerCase()}.` : 'Toutes les étapes de découverte sont terminées.'}</p>
               </div>
             </div>
@@ -276,6 +283,23 @@ export function Home() {
                 Masquer ce widget
               </Button>
             )}
+          </Widget>
+        )}
+
+        {show('accounts') && (
+          <Widget title="Comptes" to="/comptes">
+            {accounts.map((a) => (
+              <Link key={a.id} to="/comptes" className="flex items-center gap-3.5 rounded-2xl py-2 transition hover:bg-raised/60">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white" style={{ background: a.color }}>
+                  <Icon name={a.icon} size={19} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{a.name}</span>
+                  <span className="text-xs text-muted">{state.settings.currency} · affichage uniquement</span>
+                </span>
+                <span className="num font-semibold">{money(balances.accounts.get(a.id) ?? 0, { sensitive: true })}</span>
+              </Link>
+            ))}
           </Widget>
         )}
 
@@ -292,6 +316,46 @@ export function Home() {
               </>
             ) : (
               <EmptyState icon={ArrowLeftRight} title="Aucune opération" action={<Button onClick={() => open('deposit')}>Ajouter des fonds de test</Button>} />
+            )}
+          </Widget>
+        )}
+
+        {show('loans') && (
+          <Widget title="Prêts fictifs actifs" to="/prets">
+            {activeLoans.length ? (
+              <>
+                {activeLoans.slice(0, 3).map((l) => {
+                  const next = l.schedule.find((i) => i.status === 'upcoming' || i.status === 'partial');
+                  const outstanding = l.principal - l.payments.reduce((acc, p) => acc + (p.reversed ? 0 : p.principal), 0);
+                  return (
+                    <Link key={l.id} to={`/prets/${l.id}`} className="block rounded-2xl py-2 transition hover:bg-raised/60">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="truncate font-semibold">{l.label}</span>
+                        <span className="num font-semibold">{money(outstanding, { sensitive: true })}</span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-raised">
+                        <div className="h-full rounded-full bg-ok" style={{ width: `${Math.round(((l.principal - outstanding) / l.principal) * 100)}%` }} />
+                      </div>
+                      {next && (
+                        <p className={`mt-1 text-xs ${next.dueDate < today ? 'font-semibold text-danger' : 'text-muted'}`}>
+                          Prochaine échéance {money(next.amount - next.paidInterest - next.paidPrincipal)} le {formatDate(next.dueDate)}
+                          {next.dueDate < today ? ' · en retard dans la simulation' : ''}
+                        </p>
+                      )}
+                    </Link>
+                  );
+                })}
+                <Button variant="dark" className="mt-3 rounded-full" block onClick={() => navigate(summary.nextDue ? `/prets/remboursement?pret=${summary.nextDue.loan.id}` : '/prets')}>
+                  Simuler un remboursement
+                </Button>
+              </>
+            ) : (
+              <div className="flex items-center gap-4">
+                <p className="flex-1 text-sm text-muted">Aucun prêt fictif en cours. Simulez une mensualité en quelques secondes.</p>
+                <Button className="rounded-full" onClick={() => navigate('/prets/simulateur')}>
+                  Simuler
+                </Button>
+              </div>
             )}
           </Widget>
         )}

@@ -65,6 +65,7 @@ export const txTypeSchema = z.enum([
   'loan_prepayment',
   'loan_fee',
   'reversal',
+  'merchant_refund',
 ]);
 export const txStatusSchema = z.enum(['completed', 'declined']);
 export const transactionSchema = z.object({

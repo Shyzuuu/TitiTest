@@ -1,13 +1,16 @@
-import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
+import { Component, lazy, Suspense, useEffect, type ErrorInfo, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/Layout';
 import { Button, Skeleton } from './components/ui';
+import { initNative, useAndroidBackButton } from './lib/native';
 import { Home } from './pages/Home';
 
 const Accounts = lazy(() => import('./pages/Accounts'));
 const Cards = lazy(() => import('./pages/Cards'));
 const History = lazy(() => import('./pages/History'));
 const SendMoney = lazy(() => import('./pages/Send'));
+const Payments = lazy(() => import('./pages/Payments'));
+const Purchase = lazy(() => import('./pages/Purchase'));
 const Receive = lazy(() => import('./pages/Receive'));
 const Transfers = lazy(() => import('./pages/Transfers'));
 const Contacts = lazy(() => import('./pages/Contacts'));
@@ -72,6 +75,10 @@ class PageBoundary extends Component<{ children: ReactNode }, { error: Error | n
 }
 
 export function App() {
+  useAndroidBackButton();
+  useEffect(() => {
+    void initNative();
+  }, []);
   return (
     <AppShell>
       <PageBoundary>
@@ -81,6 +88,8 @@ export function App() {
             <Route path="/comptes" element={<Accounts />} />
             <Route path="/cartes" element={<Cards />} />
             <Route path="/historique" element={<History />} />
+            <Route path="/paiements" element={<Payments />} />
+            <Route path="/paiements/achat" element={<Purchase />} />
             <Route path="/envoyer" element={<SendMoney />} />
             <Route path="/recevoir" element={<Receive />} />
             <Route path="/virements" element={<Transfers />} />

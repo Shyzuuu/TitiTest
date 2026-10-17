@@ -59,6 +59,12 @@ export function createCard(state: BankState, ctx: Ctx, input: CardInput): OpResu
     };
     let next: BankState = { ...state, cards: [...state.cards, card] };
     next = withLog(next, ctx, 'success', 'Carte de démonstration créée', card.name);
+    next = withNotification(next, ctx, {
+      kind: 'card',
+      title: 'Nouvelle carte de démonstration',
+      body: `« ${card.name} »${card.kind === 'disposable' ? ' (jetable)' : ''} est prête pour vos dépenses simulées.`,
+      link: '/cartes',
+    });
     return ok(next, card, `Carte « ${card.name} » créée.`);
   });
 }

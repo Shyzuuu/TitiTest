@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#7656F6</color>
+    <color name="colorPrimaryDark">#4C32B8</color>
+    <color name="colorAccent">#9C80FF</color>
+    <color name="vbSplash">#15052C</color>
+    <color name="vbNight">#101014</color>
+</resources>

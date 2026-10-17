@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { ArrowDownLeft, ArrowUpRight, Ban, CreditCard, Landmark, PiggyBank, RotateCcw, Undo2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { canReverse, reverseTransaction } from '../domain/accounts';
+import { canReverse, refundableAmount, reverseTransaction } from '../domain/accounts';
 import { getCategory } from '../domain/categories';
 import { formatDate, formatTime } from '../domain/dates';
 import type { Transaction } from '../domain/schema';
@@ -110,6 +110,8 @@ export function TransactionDetailModal({ id, onClose }: { id: string; onClose: (
   const original = tx.reversalOf ? state.transactions.find((t) => t.id === tx.reversalOf) : null;
   const reversal = tx.reversedBy ? state.transactions.find((t) => t.id === tx.reversedBy) : null;
   const rev = canReverse(state, tx);
+  const refundable = refundableAmount(state, tx);
+  const openModal = useUi.getState().openModal;
   const typeLabel = tx.type === 'reversal' && tx.origType ? `Contrepassation · ${TX_TYPE_LABEL[tx.origType]}` : TX_TYPE_LABEL[tx.type];
 
   return (
@@ -120,10 +122,19 @@ export function TransactionDetailModal({ id, onClose }: { id: string; onClose: (
         title="Détail de l’opération"
         description="Opération de simulation — aucune valeur bancaire."
         footer={
-          rev.ok ? (
-            <Button variant="secondary" icon={Undo2} onClick={() => setConfirm(true)}>
-              Contrepasser
-            </Button>
+          rev.ok || refundable > 0 ? (
+            <>
+              {refundable > 0 && (
+                <Button variant="soft" icon={RotateCcw} onClick={() => openModal('refund', { id: tx.id })}>
+                  Remboursement commerçant
+                </Button>
+              )}
+              {rev.ok && (
+                <Button variant="secondary" icon={Undo2} onClick={() => setConfirm(true)}>
+                  Contrepasser
+                </Button>
+              )}
+            </>
           ) : undefined
         }
       >

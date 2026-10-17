@@ -5,7 +5,8 @@ import { TransactionList } from '../components/Transactions';
 import { Button, Card, EmptyState, Field, PageHeader, Select, TextInput } from '../components/ui';
 import { parseAmount } from '../domain/money';
 import type { TxType } from '../domain/schema';
-import { downloadBlob, transactionsToCsv } from '../lib/download';
+import { transactionsToCsv } from '../lib/download';
+import { exportFile } from '../lib/native';
 import { useBankState, useMoney, useToday } from '../lib/hooks';
 import { TX_TYPE_LABEL } from '../lib/labels';
 import { useUi } from '../store/ui';
@@ -85,7 +86,7 @@ export default function History() {
         icon={HistoryIcon}
         subtitle={`${filtered.length} opération(s) · solde net ${money(net, { signed: true })}`}
         actions={
-          <Button variant="secondary" icon={Download} disabled={!filtered.length} onClick={() => downloadBlob(`violetbank-demo-historique-${today}.csv`, transactionsToCsv(state, filtered), 'text/csv;charset=utf-8')}>
+          <Button variant="secondary" icon={Download} disabled={!filtered.length} onClick={() => void exportFile(`violetbank-historique-${today}.csv`, transactionsToCsv(state, filtered), 'text/csv;charset=utf-8')}>
             Export CSV
           </Button>
         }

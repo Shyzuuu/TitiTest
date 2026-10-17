@@ -75,13 +75,13 @@ export interface RoundAction {
 
 export function RoundActions({ actions, onHero = true }: { actions: RoundAction[]; onHero?: boolean }) {
   return (
-    <div className={clsx('grid w-full gap-2', actions.length >= 4 ? 'grid-cols-4' : actions.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+    <div className={clsx('grid w-full gap-2', actions.length >= 5 ? 'grid-cols-5 gap-1' : actions.length === 4 ? 'grid-cols-4' : actions.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
       {actions.map((a) => {
         const inner = (
           <>
             <span
               className={clsx(
-                'flex h-14 w-14 items-center justify-center rounded-full backdrop-blur transition active:scale-95',
+                clsx(actions.length >= 5 ? 'h-[52px] w-[52px]' : 'h-14 w-14', 'flex items-center justify-center rounded-full backdrop-blur transition active:scale-95'),
                 onHero ? 'bg-white/25 text-white hover:bg-white/35' : 'bg-raised text-ink hover:bg-line',
                 a.tone === 'active' && 'bg-white text-brand-deep hover:bg-white',
                 a.tone === 'danger' && (onHero ? 'bg-white/15 text-[#FFD0D6]' : 'text-danger'),
@@ -89,7 +89,7 @@ export function RoundActions({ actions, onHero = true }: { actions: RoundAction[
             >
               <a.icon size={24} aria-hidden />
             </span>
-            <span className="max-w-[92px]">{a.label}</span>
+            <span className={actions.length >= 5 ? 'max-w-[72px] text-[13px]' : 'max-w-[92px]'}>{a.label}</span>
           </>
         );
         const cls = clsx('flex flex-col items-center gap-2 text-[14px] font-semibold leading-tight', onHero ? 'text-white' : 'text-ink');

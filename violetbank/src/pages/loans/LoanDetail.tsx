@@ -18,7 +18,7 @@ import {
   nextOpenInstallment,
   openInstallmentsCount,
 } from '../../domain/selectors';
-import { downloadBlob } from '../../lib/download';
+import { exportFile, isNative } from '../../lib/native';
 import { useBankState, useMoney, useToday } from '../../lib/hooks';
 import { LOAN_STATUS_TONE, REPAYMENT_MODE_LABEL } from '../../lib/labels';
 import { bpsToInput, parseRate } from '../../lib/loanParams';
@@ -119,7 +119,7 @@ export default function LoanDetail() {
   const reversibleId = lastReversiblePaymentId(loan);
   const events = state.loanEvents.filter((e) => e.loanId === loan.id || (e.applicationId === loan.applicationId && e.loanId === null));
   const rows = loan.schedule.map((i) => ({ ...i, installment: i }));
-  const statement = () => downloadBlob(`releve-simulation-${loan.reference}.html`, loanStatementHtml(state, loan, today, today), 'text/html;charset=utf-8');
+  const statement = () => void exportFile(`releve-simulation-${loan.reference}.html`, loanStatementHtml(state, loan, today, today), 'text/html;charset=utf-8');
   const print = () => {
     const w = window.open('', '_blank', 'noopener=no');
     if (!w) return statement();
@@ -144,7 +144,7 @@ export default function LoanDetail() {
         actions={
           <>
             <Button variant="secondary" icon={Download} onClick={statement}>Relevé</Button>
-            <Button variant="secondary" icon={Printer} onClick={print} className="hidden sm:inline-flex">Imprimer</Button>
+            {!isNative && <Button variant="secondary" icon={Printer} onClick={print} className="hidden sm:inline-flex">Imprimer</Button>}
           </>
         }
       />

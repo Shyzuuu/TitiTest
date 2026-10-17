@@ -14,7 +14,7 @@ import { SCHEMA_VERSION, type BankState, type Contact, type LoanProduct, type Se
 import { createVault, vaultDeposit } from './vaults';
 
 export const DEFAULT_SETTINGS: Settings = {
-  appName: 'VioletBank Demo',
+  appName: 'VIOLETBANK',
   theme: 'system',
   animations: true,
   cardAnimations: true,

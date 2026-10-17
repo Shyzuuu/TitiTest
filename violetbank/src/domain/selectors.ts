@@ -6,9 +6,10 @@ import { computeBalances, effectiveType, isPosted } from './core';
 import { addDays, diffDays, datePart, monthKey, type ISODate } from './dates';
 import type { BankState, Installment, Loan, LoanApplication, Transaction, TxType } from './schema';
 
-export const SPENDING_TYPES: ReadonlySet<TxType> = new Set(['expense', 'withdrawal', 'p2p_out', 'loan_repayment', 'loan_prepayment', 'loan_fee']);
+// Un remboursement commerçant (montant positif) vient en déduction des dépenses de sa catégorie.
+export const SPENDING_TYPES: ReadonlySet<TxType> = new Set(['expense', 'withdrawal', 'p2p_out', 'loan_repayment', 'loan_prepayment', 'loan_fee', 'merchant_refund']);
 /** Dépenses courantes : les remboursements de prêts sont suivis à part. */
-export const ORDINARY_OUT_TYPES: ReadonlySet<TxType> = new Set(['expense', 'withdrawal', 'p2p_out']);
+export const ORDINARY_OUT_TYPES: ReadonlySet<TxType> = new Set(['expense', 'withdrawal', 'p2p_out', 'merchant_refund']);
 export const ORDINARY_IN_TYPES: ReadonlySet<TxType> = new Set(['deposit', 'p2p_in']);
 export const LOAN_OUT_TYPES: ReadonlySet<TxType> = new Set(['loan_repayment', 'loan_prepayment', 'loan_fee']);
 export const INTERNAL_TYPES: ReadonlySet<TxType> = new Set(['transfer_in', 'transfer_out', 'vault_deposit', 'vault_withdrawal']);

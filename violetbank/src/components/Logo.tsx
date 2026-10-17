@@ -1,33 +1,27 @@
-import { useId } from 'react';
-import { useBank } from '../store/bank';
+import clsx from 'clsx';
+import logoUrl from '../assets/violetbank-logo.webp';
 
-/** Logo original : hexagone facetté violet et chevron, sans lien avec une marque existante. */
-export function LogoMark({ size = 36 }: { size?: number }) {
-  // Identifiant unique par instance : un dégradé défini dans un SVG masqué (display:none) ne s'applique pas ailleurs.
-  const gradientId = `vb-logo-${useId().replace(/:/g, '')}`;
+export const APP_NAME = 'VIOLETBANK';
+
+/** Icône carrée VIOLETBANK (même visuel que l'icône de l'application Android). */
+export function LogoMark({ size = 36, className }: { size?: number; className?: string }) {
+  return <img src={logoUrl} width={size} height={size} alt="" aria-hidden className={clsx('shrink-0 rounded-[24%] object-cover', className)} draggable={false} />;
+}
+
+/** Nom horizontal : « VIOLET » en couleur courante, « BANK » en violet (lisible sur fond clair et sombre). */
+export function Wordmark({ className, onDark }: { className?: string; onDark?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#B9A7FF" />
-          <stop offset=".5" stopColor="#7656F6" />
-          <stop offset="1" stopColor="#4930B5" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill="#101014" />
-      <path d="M32 9 53 21v22L32 55 11 43V21z" fill={`url(#${gradientId})`} />
-      <path d="M32 9v46M11 21l42 22M53 21 11 43" stroke="#fff" strokeOpacity=".3" strokeWidth="1.5" />
-      <path d="m22 26 10 18 10-18" fill="none" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <span className={clsx('font-extrabold tracking-[0.08em]', className)}>
+      VIOLET<span className={onDark ? 'text-[#C9B8FF]' : 'text-brand'}>BANK</span>
+    </span>
   );
 }
 
-export function Logo({ compact }: { compact?: boolean }) {
-  const name = useBank((s) => s.state.settings.appName);
+export function Logo({ compact, onDark }: { compact?: boolean; onDark?: boolean }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-2.5">
+    <span className="inline-flex min-w-0 items-center gap-2.5" aria-label={APP_NAME}>
       <LogoMark />
-      {!compact && <span className="truncate text-[17px] font-extrabold tracking-tight">{name}</span>}
+      {!compact && <Wordmark className="truncate text-[17px]" onDark={onDark} />}
     </span>
   );
 }

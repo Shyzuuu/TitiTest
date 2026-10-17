@@ -3,36 +3,36 @@
 @tailwind utilities;
 
 :root {
-  --bg: 247 247 251;
+  /* Palette VIOLETBANK (cahier des charges) en canaux RGB pour l'opacité Tailwind. */
+  --bg: 247 247 251; /* #F7F7FB */
   --surface: 255 255 255;
-  --raised: 241 239 250;
-  --line: 230 228 240;
+  --raised: 240 237 251;
+  --line: 229 226 240;
   --ink: 16 16 20;
   --muted: 110 110 122;
-  --brand: 118 86 246;
-  --brand-deep: 73 48 181;
-  --brand-soft: 233 227 255;
-  --brand-ink: 73 48 181;
-  --ok: 38 184 121;
-  --danger: 228 79 98;
+  --brand: 118 86 246; /* #7656F6 */
+  --brand-deep: 76 50 184; /* #4C32B8 */
+  --brand-soft: 232 225 255; /* #E8E1FF */
+  --brand-ink: 76 50 184;
+  --ok: 36 180 126; /* #24B47E */
+  --danger: 228 79 98; /* #E44F62 */
   --warn: 243 166 66;
   --info: 66 133 244;
   color-scheme: light;
 }
 
 .dark {
-  /* Thème « violet nuit » : surfaces teintées plutôt que gris neutres. */
-  --bg: 19 14 38;
-  --surface: 35 28 64;
-  --raised: 47 39 82;
-  --line: 60 51 100;
+  --bg: 16 16 20; /* #101014 */
+  --surface: 27 27 35; /* #1B1B23 */
+  --raised: 37 36 48;
+  --line: 48 46 62;
   --ink: 255 255 255;
-  --muted: 178 170 206;
-  --brand: 150 120 255;
+  --muted: 146 146 157; /* #92929D */
+  --brand: 156 128 255; /* #9C80FF */
   --brand-deep: 118 86 246;
-  --brand-soft: 58 46 110;
-  --brand-ink: 196 182 255;
-  --ok: 52 205 140;
+  --brand-soft: 45 37 84;
+  --brand-ink: 190 172 255;
+  --ok: 46 200 140;
   --danger: 240 106 124;
   --warn: 245 178 90;
   --info: 110 162 255;

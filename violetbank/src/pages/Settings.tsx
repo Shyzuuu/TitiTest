@@ -103,7 +103,6 @@ export default function SettingsPage() {
   const toast = useUi((s) => s.toast);
   const s = state.settings;
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => update((st) => ({ ...st, settings: { ...st.settings, [key]: value } }));
-  const [appName, setAppName] = useState(s.appName);
   const [maxDebt, setMaxDebt] = useState(centsToInput(s.maxTotalDebt));
   const [fee, setFee] = useState(bpsToInput(s.earlyRepaymentFeeBps));
   const [simDate, setSimDate] = useState(s.simulationDate ?? toISODate(new Date()));
@@ -117,25 +116,6 @@ export default function SettingsPage() {
         <div className="py-3">
           <span className="label">Thème</span>
           <Segmented label="Thème" value={s.theme} onChange={(v) => set('theme', v)} options={[{ value: 'light', label: 'Clair' }, { value: 'dark', label: 'Sombre' }, { value: 'system', label: 'Système' }]} />
-        </div>
-        <div className="py-3">
-          <Field label="Nom de l’application" htmlFor="app-name" error={errors.appName}>
-            <div className="flex gap-2">
-              <TextInput id="app-name" value={appName} onChange={(e) => setAppName(e.target.value)} maxLength={32} />
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const v = appName.trim();
-                  if (!v) return setErrors((e) => ({ ...e, appName: 'Le nom ne peut pas être vide.' }));
-                  setErrors((e) => ({ ...e, appName: null }));
-                  set('appName', v.slice(0, 32));
-                  toast('success', 'Nom de l’application mis à jour');
-                }}
-              >
-                Appliquer
-              </Button>
-            </div>
-          </Field>
         </div>
         <div className="py-3">
           <Field label="Devise d’affichage" htmlFor="currency" hint="Change uniquement le symbole affiché : aucune conversion n’est appliquée aux montants fictifs.">

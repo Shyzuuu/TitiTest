@@ -12,9 +12,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "build:artifact": "node scripts-artifact.mjs"
+    "build:artifact": "node scripts-artifact.mjs",
+    "build:android": "VB_TARGET=android vite build && cap sync android",
+    "apk": "npm run build:android && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
+    "@fontsource-variable/inter": "^5.2.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.487.0",
     "react": "^18.3.1",
@@ -25,6 +34,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
     "@playwright/test": "^1.56.0",
     "@types/node": "^22.14.0",
     "@types/react": "^18.3.20",

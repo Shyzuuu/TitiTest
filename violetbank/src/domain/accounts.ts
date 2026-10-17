@@ -37,22 +37,33 @@ function assertFunds(state: BankState, accountId: string, amount: number, label 
   }
 }
 
-/** Émet l'alerte budgétaire une seule fois par mois et par catégorie. */
+/** Seuil de l'alerte « budget presque dépassé ». */
+export const BUDGET_NEAR_RATIO = 0.8;
+
+/**
+ * Alertes budgétaires, chacune émise une seule fois par mois et par catégorie :
+ * « presque dépassé » à 80 %, puis « dépassé » au-delà de 100 %.
+ */
 export function checkBudgetAlert(state: BankState, ctx: Ctx, category: string): BankState {
   const month = monthKey(ctx.now);
   const budget = state.budgets.find((b) => b.category === category);
-  if (!budget || budget.alertedMonths.includes(month)) return state;
+  if (!budget) return state;
   const spent = categorySpent(state, category, month);
-  if (spent <= budget.limit) return state;
   const label = getCategory(category, state.customCategories).label;
+  const over = spent > budget.limit;
+  const near = !over && spent >= budget.limit * BUDGET_NEAR_RATIO;
+  const key = over ? month : near ? `near:${month}` : null;
+  if (!key || budget.alertedMonths.includes(key)) return state;
   const next = {
     ...state,
-    budgets: state.budgets.map((b) => (b.id === budget.id ? { ...b, alertedMonths: [...b.alertedMonths, month].slice(-24) } : b)),
+    budgets: state.budgets.map((b) => (b.id === budget.id ? { ...b, alertedMonths: [...b.alertedMonths, key].slice(-48) } : b)),
   };
   return withNotification(next, ctx, {
     kind: 'budget',
-    title: `Budget « ${label} » dépassé`,
-    body: `${formatMoney(spent)} dépensés pour un budget fictif de ${formatMoney(budget.limit)} ce mois-ci.`,
+    title: over ? `Budget « ${label} » dépassé` : `Budget « ${label} » presque atteint`,
+    body: over
+      ? `${formatMoney(spent)} dépensés pour un budget fictif de ${formatMoney(budget.limit)} ce mois-ci.`
+      : `${formatMoney(spent)} sur ${formatMoney(budget.limit)} (${Math.round((spent / budget.limit) * 100)} %) ce mois-ci.`,
     link: '/budgets',
   });
 }
@@ -339,10 +350,61 @@ export function receiveFromContact(state: BankState, ctx: Ctx, input: P2PInput):
 
 const REVERSIBLE = new Set(['deposit', 'withdrawal', 'expense', 'p2p_in', 'p2p_out', 'transfer_in', 'transfer_out']);
 
+/** Montant déjà remboursé par le commerçant pour une dépense donnée. */
+export function refundedAmount(state: BankState, expenseId: string): number {
+  let total = 0;
+  for (const t of state.transactions) if (t.type === 'merchant_refund' && t.status === 'completed' && t.reversalOf === expenseId) total += t.amount;
+  return total;
+}
+
+export function refundableAmount(state: BankState, tx: Transaction): number {
+  if (tx.type !== 'expense' || tx.status !== 'completed' || tx.reversedBy) return 0;
+  return Math.max(0, -tx.amount - refundedAmount(state, tx.id));
+}
+
+/**
+ * Remboursement simulé d'un commerçant (retour d'article, annulation) : crédit
+ * lié à la dépense d'origine, plafonné au montant non encore remboursé.
+ */
+export function merchantRefund(state: BankState, ctx: Ctx, expenseId: string, amount: number, reason?: string): OpResult<Transaction> {
+  return guard(() => {
+    assertAmount(amount);
+    const tx = state.transactions.find((t) => t.id === expenseId);
+    if (!tx || tx.type !== 'expense') throw new DomainError('Seule une dépense peut être remboursée par le commerçant.');
+    if (tx.status !== 'completed') throw new DomainError('Une dépense refusée n’a rien à rembourser.');
+    if (tx.reversedBy) throw new DomainError('Cette dépense a déjà été contrepassée.');
+    const remaining = refundableAmount(state, tx);
+    if (remaining <= 0) throw new DomainError('Cette dépense est déjà entièrement remboursée.');
+    if (amount > remaining) throw new DomainError(`Remboursement maximum : ${formatMoney(remaining)}.`);
+    const account = requireActiveAccount(state, tx.accountId);
+    const refund = buildTx(ctx, {
+      type: 'merchant_refund',
+      accountId: account.id,
+      amount,
+      label: `Remboursement · ${tx.label}`.slice(0, 120),
+      category: tx.category,
+      cardId: tx.cardId,
+      reversalOf: tx.id,
+      note: reason ? sanitizeText(reason, 280) : 'Remboursement commerçant simulé',
+    });
+    let next = withTx(state, refund);
+    next = withLog(next, ctx, 'success', 'Remboursement commerçant', `${tx.label} · ${formatMoney(amount)}`);
+    next = withNotification(next, ctx, {
+      kind: 'transaction',
+      title: 'Remboursement commerçant simulé',
+      body: `${tx.label} vous a remboursé ${formatMoney(amount)} sur « ${account.name} ».`,
+      link: `/historique?tx=${refund.id}`,
+    });
+    return ok(next, refund, `${formatMoney(amount)} remboursés par ${tx.label}.`);
+  });
+}
+
 export function canReverse(state: BankState, tx: Transaction): { ok: boolean; reason?: string } {
   if (tx.status !== 'completed') return { ok: false, reason: 'Une opération refusée n’a aucun impact à corriger.' };
   if (tx.type === 'reversal') return { ok: false, reason: 'Une contrepassation ne peut pas elle-même être contrepassée.' };
   if (tx.reversedBy) return { ok: false, reason: 'Opération déjà contrepassée.' };
+  if (tx.type === 'merchant_refund') return { ok: false, reason: 'Un remboursement commerçant ne se contrepasse pas.' };
+  if (tx.type === 'expense' && refundedAmount(state, tx.id) > 0) return { ok: false, reason: 'Cette dépense a déjà fait l’objet d’un remboursement commerçant.' };
   if (!REVERSIBLE.has(tx.type)) {
     return { ok: false, reason: tx.loanId ? 'Les opérations de prêt se corrigent depuis la fiche du prêt.' : 'Utilisez le coffre pour déplacer à nouveau ces fonds.' };
   }

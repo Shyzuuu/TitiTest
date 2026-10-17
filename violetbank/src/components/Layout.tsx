@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import {
-  ArrowDownLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, CalendarDays, Calculator, ChartPie, ChevronsLeft, ChevronsRight, ChevronsUpDown, CircleHelp, Coins, CreditCard,
+  ArrowDownLeft, ArrowLeftRight, BarChart3, ShoppingCart, Bell, BookOpen, CalendarDays, Calculator, ChartPie, ChevronsLeft, ChevronsRight, ChevronsUpDown, CircleHelp, Coins, CreditCard,
   FileClock, FolderOpen, HandCoins, History, Home, Landmark, Moon, PiggyBank, RotateCcw, Scale, Search, Send, Settings,
   Sun, Target, User, Users, Wallet, X, AlertTriangle, CheckCircle2, Info, XCircle, FlaskConical,
   type LucideIcon,
@@ -12,7 +12,7 @@ import { formatMoney } from '../domain/money';
 import { useResolvedTheme, useToday } from '../lib/hooks';
 import { useBank } from '../store/bank';
 import { useUi } from '../store/ui';
-import { Logo } from './Logo';
+import { Logo, LogoMark } from './Logo';
 import { GlobalModals } from './OperationModals';
 import { IconButton, Modal } from './ui';
 
@@ -35,6 +35,8 @@ export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Paiements',
     items: [
+      { to: '/paiements', label: 'Paiements', icon: ArrowLeftRight, end: true },
+      { to: '/paiements/achat', label: 'Payer (achat simulé)', icon: ShoppingCart },
       { to: '/envoyer', label: 'Envoyer', icon: Send },
       { to: '/recevoir', label: 'Recevoir', icon: ArrowDownLeft },
       { to: '/virements', label: 'Virements internes', icon: ArrowLeftRight },
@@ -160,7 +162,7 @@ function RoundLink({ to, label, icon: I, onHero, className }: { to: string; labe
       aria-label={label}
       title={label}
       className={clsx(
-        'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition active:scale-95',
+        'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition active:scale-95',
         onHero ? 'bg-black/20 text-white backdrop-blur hover:bg-black/30' : 'border border-line bg-surface text-ink hover:bg-raised',
         className,
       )}
@@ -187,28 +189,30 @@ function Header({ onHero }: { onHero: boolean }) {
   }, []);
   const transparent = onHero && !scrolled;
   return (
-    <header className={clsx('sticky top-0 z-40 transition-colors duration-200', transparent ? 'bg-transparent' : onHero ? 'bg-[#2a1b5e]/85 backdrop-blur-xl' : 'border-b border-line/70 bg-bg/85 backdrop-blur-xl')}>
+    <header className={clsx('sticky top-0 z-40 pt-[env(safe-area-inset-top)] transition-colors duration-200', transparent ? 'bg-transparent' : onHero ? 'bg-[#2B1C6E]/90 backdrop-blur-xl' : 'border-b border-line/70 bg-bg/85 backdrop-blur-xl')}>
       <p className={clsx('py-1 text-center text-[10px] font-extrabold uppercase tracking-[.14em] sm:text-[11px]', onHero ? 'bg-black/15 text-white/85' : 'bg-gradient-to-r from-brand-deep via-brand to-brand-deep text-white')}>
         Simulation bancaire — argent et crédits fictifs
       </p>
-      <div className="mx-auto flex h-[68px] max-w-6xl items-center gap-2.5 px-4 sm:gap-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[64px] max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
+        <Link to="/" aria-label="Accueil VIOLETBANK" className="shrink-0 lg:hidden">
+          <LogoMark size={40} />
+        </Link>
         <Link
           to="/profil"
           aria-label={`Profil de ${profile.displayName}${unread ? `, ${unread} notification(s) non lue(s)` : ''}`}
-          className={clsx('relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[15px] font-bold transition active:scale-95', onHero ? 'bg-black/25 text-white' : 'bg-brand-soft text-brand-ink')}
+          className={clsx('relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[14px] font-bold transition active:scale-95', onHero ? 'bg-black/25 text-white' : 'bg-brand-soft text-brand-ink')}
         >
           {initials(profile.displayName)}
-          {unread > 0 && <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-transparent bg-danger" />}
         </Link>
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
           className={clsx(
-            'flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-full px-4 text-left text-[15px] transition',
+            'flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full px-3.5 text-left text-[15px] transition',
             onHero ? 'border border-white/20 bg-black/20 text-white/90 backdrop-blur hover:bg-black/30' : 'border border-line bg-surface text-muted hover:bg-raised',
           )}
         >
-          <Search size={19} aria-hidden className="shrink-0" />
+          <Search size={18} aria-hidden className="shrink-0" />
           <span className="truncate">Rechercher</span>
           <kbd className="ml-auto hidden rounded-md border border-current/30 px-1.5 text-[10px] opacity-60 md:inline">/</kbd>
         </button>
@@ -218,14 +222,17 @@ function Header({ onHero }: { onHero: boolean }) {
           </Link>
         )}
         <SimulationBadge className="hidden md:inline-flex" />
-        <RoundLink to="/statistiques" label="Statistiques" icon={BarChart3} onHero={onHero} />
-        <RoundLink to="/cartes" label="Cartes virtuelles" icon={CreditCard} onHero={onHero} />
-        <RoundLink to="/notifications" label="Notifications" icon={Bell} onHero={onHero} className="hidden md:inline-flex" />
+        <RoundLink to="/statistiques" label="Statistiques" icon={BarChart3} onHero={onHero} className="hidden md:inline-flex" />
+        <span className="relative">
+          <RoundLink to="/notifications" label={`Notifications${unread ? ` (${unread} non lues)` : ''}`} icon={Bell} onHero={onHero} />
+          {unread > 0 && <span className="num pointer-events-none absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-danger px-1 text-center text-[10px] font-bold leading-[18px] text-white">{unread > 99 ? '99+' : unread}</span>}
+        </span>
+        <RoundLink to="/parametres" label="Paramètres" icon={Settings} onHero={onHero} />
         <button
           type="button"
           onClick={() => update((s) => ({ ...s, settings: { ...s.settings, theme: theme === 'dark' ? 'light' : 'dark' } }))}
           aria-label={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-          className={clsx('hidden h-11 w-11 shrink-0 items-center justify-center rounded-full transition md:inline-flex', onHero ? 'bg-black/20 text-white hover:bg-black/30' : 'border border-line bg-surface hover:bg-raised')}
+          className={clsx('hidden h-10 w-10 shrink-0 items-center justify-center rounded-full transition md:inline-flex', onHero ? 'bg-black/20 text-white hover:bg-black/30' : 'border border-line bg-surface hover:bg-raised')}
         >
           {theme === 'dark' ? <Sun size={19} aria-hidden /> : <Moon size={19} aria-hidden />}
         </button>
@@ -236,15 +243,15 @@ function Header({ onHero }: { onHero: boolean }) {
 
 const BOTTOM_ITEMS: NavItem[] = [
   { to: '/', label: 'Accueil', icon: Home, end: true },
-  { to: '/prets', label: 'Crédit', icon: Coins },
-  { to: '/coffres', label: 'Épargne', icon: PiggyBank },
-  { to: '/envoyer', label: 'Virements', icon: ArrowLeftRight },
+  { to: '/comptes', label: 'Comptes', icon: Wallet },
+  { to: '/cartes', label: 'Cartes', icon: CreditCard },
+  { to: '/paiements', label: 'Paiements', icon: ArrowLeftRight },
+  { to: '/profil', label: 'Profil', icon: User },
 ];
 
 /** Barre flottante : les libellés se replient au défilement pour libérer l'écran. */
 function BottomNav() {
-  const setMore = useUi((s) => s.setMoreOpen);
-  const pending = useBank((s) => s.state.loanApplications.some((a) => a.status === 'pending' || a.status === 'accepted'));
+  const unread = useUnread();
   const [compact, setCompact] = useState(false);
   useEffect(() => {
     const onScroll = () => setCompact(window.scrollY > 120);
@@ -254,7 +261,7 @@ function BottomNav() {
   }, []);
   return (
     <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
-      <div className="mx-auto flex max-w-md items-center gap-1 rounded-full border border-white/10 bg-[#15102b]/90 p-1.5 text-white shadow-lift backdrop-blur-xl">
+      <div className="mx-auto flex max-w-md items-center gap-0.5 rounded-full border border-white/10 bg-[#15122A]/92 p-1.5 text-white shadow-lift backdrop-blur-xl">
         {BOTTOM_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -262,17 +269,14 @@ function BottomNav() {
             end={item.end}
             aria-label={item.label}
             className={({ isActive }) =>
-              clsx('relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-2 text-[11px] font-semibold transition-all', isActive ? 'bg-white/15 text-white' : 'text-white/65 hover:text-white')
+              clsx('relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[11px] font-semibold transition-all', isActive ? 'bg-white/15 text-white' : 'text-white/65 hover:text-white')
             }
           >
             <item.icon size={22} aria-hidden />
             <span className={clsx('transition-all', compact ? 'h-0 overflow-hidden opacity-0' : 'h-4 opacity-100')}>{item.label}</span>
-            {item.to === '/prets' && pending && <span className="absolute right-[30%] top-1.5 h-2 w-2 rounded-full bg-danger" />}
+            {item.to === '/profil' && unread > 0 && <span className="absolute right-[26%] top-1.5 h-2 w-2 rounded-full bg-danger" />}
           </NavLink>
         ))}
-        <button type="button" onClick={() => setMore(true)} aria-label="Toutes les rubriques" className="flex w-14 shrink-0 flex-col items-center justify-center rounded-full py-2 text-white/65 transition hover:text-white">
-          <ChevronsUpDown size={22} aria-hidden />
-        </button>
       </div>
     </nav>
   );
@@ -448,13 +452,13 @@ function BootNotice() {
 
 /** Écrans principaux affichés sur le dégradé plein écran. */
 // Hauteur du dégradé par écran : il doit couvrir tout le contenu blanc posé dessus.
-const HERO_ROUTES = new Map<string, number>([['/', 760], ['/prets', 820], ['/cartes', 1500]]);
+const HERO_ROUTES = new Map<string, number>([['/', 780], ['/prets', 820], ['/cartes', 1500], ['/paiements', 640], ['/profil', 560]]);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const theme = useResolvedTheme();
   const animations = useBank((s) => s.state.settings.animations);
-  const appName = useBank((s) => s.state.settings.appName);
+  const appName = 'VIOLETBANK';
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#101014' : '#7656F6');
@@ -464,7 +468,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [animations]);
   useEffect(() => {
     document.title = `${appName} — Simulation bancaire`;
-  }, [appName]);
+  }, []);
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [location.pathname]);
@@ -480,7 +484,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {onHero && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 bg-[linear-gradient(180deg,#A13CF2_0%,#8A4DF7_16%,#6A4BEF_36%,#3B2590_62%,#2A1B6A_86%,rgb(var(--bg))_100%)]"
+            className="pointer-events-none absolute inset-x-0 top-0 bg-[linear-gradient(180deg,#9C80FF_0%,#7656F6_20%,#5E42DE_40%,#4C32B8_60%,#2B1C6E_84%,rgb(var(--bg))_100%)]"
             style={{ height: HERO_ROUTES.get(location.pathname) }}
           />
         )}

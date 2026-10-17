@@ -151,3 +151,37 @@ describe('jeu d’exemple', () => {
     expect(validateState(broken).ok).toBe(false);
   });
 });
+
+describe('remboursement commerçant et alertes', () => {
+  it('rembourse une dépense, partiellement puis totalement, et met à jour le budget', async () => {
+    const { merchantRefund, refundableAmount } = await import('../src/domain/accounts');
+    let s = unwrap(upsertBudget(freshState(D, 50_000), ctxAt(D), 'shopping', 10_000)).state;
+    const exp = unwrap(recordExpense(s, ctxAt(D), { accountId: 'acc_main', amount: 6_000, merchant: 'Boutique', category: 'shopping' }));
+    s = exp.state;
+    expect(categorySpent(s, 'shopping', '2026-01')).toBe(6_000);
+    s = unwrap(merchantRefund(s, ctxAt(D), exp.data.id, 2_500)).state;
+    expect(accountBalance(s, 'acc_main')).toBe(46_500);
+    expect(categorySpent(s, 'shopping', '2026-01')).toBe(3_500);
+    expect(refundableAmount(s, s.transactions.find((t) => t.id === exp.data.id)!)).toBe(3_500);
+    expect(merchantRefund(s, ctxAt(D), exp.data.id, 3_501).ok).toBe(false);
+    s = unwrap(merchantRefund(s, ctxAt(D), exp.data.id, 3_500)).state;
+    expect(merchantRefund(s, ctxAt(D), exp.data.id, 1).ok).toBe(false);
+    // Une dépense remboursée ne peut plus être contrepassée (double crédit).
+    expect(reverseTransaction(s, ctxAt(D), exp.data.id).ok).toBe(false);
+    expect(accountBalance(s, 'acc_main')).toBe(50_000);
+  });
+
+  it('alerte « presque atteint » à 80 % puis « dépassé », une seule fois chacune', () => {
+    let s = unwrap(upsertBudget(freshState(D, 50_000), ctxAt(D), 'food', 10_000)).state;
+    s = unwrap(recordExpense(s, ctxAt(D), { accountId: 'acc_main', amount: 8_200, merchant: 'A', category: 'food' })).state;
+    s = unwrap(recordExpense(s, ctxAt(D), { accountId: 'acc_main', amount: 500, merchant: 'B', category: 'food' })).state;
+    expect(s.notifications.filter((n) => n.title.includes('presque'))).toHaveLength(1);
+    s = unwrap(recordExpense(s, ctxAt(D), { accountId: 'acc_main', amount: 2_000, merchant: 'C', category: 'food' })).state;
+    expect(s.notifications.filter((n) => n.title.includes('dépassé'))).toHaveLength(1);
+  });
+
+  it('la création d’une carte est notifiée', () => {
+    const c = unwrap(createCard(freshState(D), ctxAt(D), { name: 'Nouvelle', accountId: 'acc_main', color: '#7656F6', accent: '#4C32B8', style: 'gradient', avatar: null, monthlyLimit: null, locked: false }));
+    expect(c.state.notifications[0]?.title).toBe('Nouvelle carte de démonstration');
+  });
+});

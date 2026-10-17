@@ -9,6 +9,7 @@ import { useBank } from '../store/bank';
 import { useUi } from '../store/ui';
 import { AccountSelect } from './AccountSelect';
 import { AmountInput, DEPOSIT_PRESETS } from './AmountInput';
+import { RefundModal } from './RefundModal';
 import { TransactionDetailModal } from './Transactions';
 import { Button, Callout, Field, Modal, Select, SuccessCheck, TextInput } from './ui';
 
@@ -294,7 +295,7 @@ export function QuickActionsModal({ onClose }: { onClose: () => void }) {
   const actions = [
     { label: 'Ajouter de l’argent', icon: ArrowDownToLine, onClick: () => open('deposit') },
     { label: 'Retirer', icon: ArrowUpFromLine, onClick: () => open('withdraw') },
-    { label: 'Simuler une dépense', icon: Receipt, onClick: () => open('expense') },
+    { label: 'Payer (achat simulé)', icon: Receipt, onClick: () => go('/paiements/achat') },
     { label: 'Virement interne', icon: ArrowLeftRight, onClick: () => open('transfer') },
     { label: 'Envoyer', icon: Send, onClick: () => go('/envoyer') },
     { label: 'Créer une carte', icon: CreditCard, onClick: () => go('/cartes?nouvelle=1') },
@@ -338,6 +339,8 @@ export function GlobalModals() {
       return p.id ? <TransactionDetailModal key={p.id} id={p.id} onClose={close} /> : null;
     case 'quick':
       return <QuickActionsModal onClose={close} />;
+    case 'refund':
+      return p.id ? <RefundModal key={`refund-${p.id}`} txId={p.id} onClose={close} /> : null;
     default:
       return null;
   }

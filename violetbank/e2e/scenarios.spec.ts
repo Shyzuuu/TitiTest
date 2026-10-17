@@ -194,3 +194,31 @@ test.describe('Scénario G — erreurs et cohérence', () => {
     expect(toCents(net?.split('solde net')[1] ?? '')).toBe(0);
   });
 });
+
+test.describe('Paiement simulé et remboursement commerçant', () => {
+  test('achat en 4 étapes puis remboursement partiel, soldes cohérents', async ({ page }) => {
+    await resetToEmpty(page);
+    await addFunds(page, '100');
+    await page.goto('/paiements/achat');
+    await page.getByRole('button', { name: 'Shopping' }).click();
+    await page.getByRole('button', { name: /Boutique Violette/ }).click();
+    await page.getByRole('button', { name: 'Sans carte' }).click();
+    await page.getByLabel('Montant').fill('30');
+    await page.getByRole('button', { name: 'Vérifier le paiement' }).click();
+    await page.getByTestId('confirm-purchase').dblclick();
+    await expect(page.getByText('chez Boutique Violette · dépense de simulation')).toBeVisible();
+    await page.goto('/');
+    expect(await mainBalance(page)).toBe(7_000);
+    await page.goto('/paiements');
+    await page.getByRole('button', { name: 'Simuler' }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Remboursement commerçant' });
+    await dialog.getByLabel('Montant remboursé').fill('10');
+    await dialog.getByRole('button', { name: 'Confirmer le remboursement' }).click();
+    await expect(dialog.getByText('10,00 € remboursés')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Terminé' }).click();
+    await page.goto('/');
+    expect(await mainBalance(page)).toBe(8_000);
+    await page.reload();
+    expect(await mainBalance(page)).toBe(8_000);
+  });
+});

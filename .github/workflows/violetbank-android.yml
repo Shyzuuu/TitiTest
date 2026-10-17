@@ -1,0 +1,132 @@
+# Compile, signe, teste sur émulateur et publie l'APK VIOLETBANK (application de simulation).
+name: VIOLETBANK Android (APK)
+
+on:
+  push:
+    branches: [claude/violetbank-demo-app-f7zt50]
+    paths: ['violetbank/**', '.github/workflows/violetbank-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: violetbank-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilation et signature
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: violetbank
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: violetbank/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Dépendances
+        run: npm ci
+      - name: Typage et tests unitaires
+        run: |
+          npm run typecheck
+          npm test
+      - name: Application web embarquée + synchronisation Capacitor
+        run: npm run build:android
+      - name: Compilation Gradle (release signée)
+        working-directory: violetbank/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+      - name: Vérification de l'APK
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk VioletBank.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --verbose --print-certs VioletBank.apk
+          "$BT/aapt2" dump badging VioletBank.apk | grep -E "^package|application-label:|sdkVersion|targetSdkVersion|launchable-activity"
+          ls -l VioletBank.apk
+          sha256sum VioletBank.apk | tee VioletBank.apk.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VioletBank-apk
+          path: |
+            violetbank/VioletBank.apk
+            violetbank/VioletBank.apk.sha256
+          if-no-files-found: error
+
+  emulator:
+    name: Installation et lancement sur émulateur Android
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: VioletBank-apk
+      - name: Accélération KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Installation, lancement, retour, fermeture et réouverture
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r VioletBank.apk
+            adb shell pm list packages | grep com.violetbank.demo
+            adb shell monkey -p com.violetbank.demo -c android.intent.category.LAUNCHER 1
+            sleep 20
+            adb shell pidof com.violetbank.demo
+            adb exec-out screencap -p > 01-lancement.png
+            adb shell input keyevent KEYCODE_BACK
+            sleep 3
+            adb exec-out screencap -p > 02-apres-retour.png
+            adb shell am force-stop com.violetbank.demo
+            adb shell monkey -p com.violetbank.demo -c android.intent.category.LAUNCHER 1
+            sleep 15
+            adb shell pidof com.violetbank.demo
+            adb exec-out screencap -p > 03-reouverture.png
+            adb logcat -d > logcat.txt
+            ! grep -E "FATAL EXCEPTION.*|Process: com.violetbank.demo" logcat.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VioletBank-emulateur
+          path: |
+            *.png
+            logcat.txt
+
+  release:
+    name: Publication de VioletBank.apk
+    needs: [build, emulator]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: VioletBank-apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: violetbank-latest
+          target_commitish: ${{ github.sha }}
+          name: VIOLETBANK — APK Android (simulation)
+          prerelease: true
+          make_latest: false
+          body: |
+            Application Android VIOLETBANK — simulation bancaire entièrement fictive (aucun argent, aucune carte, aucun prêt réel).
+            Commit : ${{ github.sha }}. Téléchargez VioletBank.apk sur votre téléphone, autorisez l'installation depuis cette source, puis installez.
+            APK signé avec une clé de démonstration (non destinée au Play Store).
+          files: |
+            VioletBank.apk
+            VioletBank.apk.sha256
