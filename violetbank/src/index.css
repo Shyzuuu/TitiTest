@@ -47,6 +47,26 @@
   body {
     @apply bg-bg text-ink font-sans antialiased;
     overflow-x: hidden;
+    /* Pas de rebond / pull-to-refresh du navigateur : comportement d'application native. */
+    overscroll-behavior-y: none;
+  }
+  /* Supprime le délai de double-tap et la sélection accidentelle sur les contrôles tactiles. */
+  button,
+  a,
+  [role='button'],
+  [role='tab'],
+  label {
+    touch-action: manipulation;
+  }
+  button,
+  nav a,
+  [role='tab'] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  img {
+    -webkit-user-drag: none;
   }
   :focus-visible {
     outline: 2px solid rgb(var(--brand));

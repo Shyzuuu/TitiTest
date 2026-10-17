@@ -3,7 +3,7 @@ import logoUrl from '../assets/violetbank-logo.webp';
 
 export const APP_NAME = 'VBanque';
 export const APP_AUTHOR = 'Titi';
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.1.0';
 
 /** Icône carrée VBanque (même visuel que l'icône de l'application Android). */
 export function LogoMark({ size = 36, className }: { size?: number; className?: string }) {

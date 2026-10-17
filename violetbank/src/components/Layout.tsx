@@ -191,7 +191,7 @@ function Header({ onHero }: { onHero: boolean }) {
   const transparent = onHero && !scrolled;
   return (
     <header className={clsx('sticky top-0 z-40 pt-[env(safe-area-inset-top)] transition-colors duration-200', transparent ? 'bg-transparent' : onHero ? 'bg-[#2B1C6E]/90 backdrop-blur-xl' : 'border-b border-line/70 bg-bg/85 backdrop-blur-xl')}>
-      <p className={clsx('py-1 text-center text-[10px] font-extrabold uppercase tracking-[.14em] sm:text-[11px]', onHero ? 'bg-black/15 text-white/85' : 'bg-gradient-to-r from-brand-deep via-brand to-brand-deep text-white')}>
+      <p className={clsx('truncate whitespace-nowrap px-2 py-1 text-center text-[9px] font-extrabold uppercase tracking-[.08em] min-[400px]:text-[10px] sm:text-[11px] sm:tracking-[.14em]', onHero ? 'bg-black/15 text-white/85' : 'bg-gradient-to-r from-brand-deep via-brand to-brand-deep text-white')}>
         Simulation bancaire — argent et crédits fictifs
       </p>
       <div className="mx-auto flex h-[64px] max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
@@ -208,13 +208,14 @@ function Header({ onHero }: { onHero: boolean }) {
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
+          aria-label="Rechercher"
           className={clsx(
             'flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full px-3.5 text-left text-[15px] transition',
             onHero ? 'border border-white/20 bg-black/20 text-white/90 backdrop-blur hover:bg-black/30' : 'border border-line bg-surface text-muted hover:bg-raised',
           )}
         >
           <Search size={18} aria-hidden className="shrink-0" />
-          <span className="truncate">Rechercher</span>
+          <span className="truncate max-[379px]:hidden">Rechercher</span>
           <kbd className="ml-auto hidden rounded-md border border-current/30 px-1.5 text-[10px] opacity-60 md:inline">/</kbd>
         </button>
         {simDate && (
