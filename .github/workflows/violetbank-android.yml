@@ -32,7 +32,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      - name: SDK Android préinstallé sur la machine GitHub
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
       - name: Dépendances
         run: npm ci
       - name: Typage et tests unitaires
